@@ -2,6 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-Data/Raw/
-Data/Modified/
-Data/Deprecated/
+02_Data/01_Raw/
+02_Data/02_Modified/
+04_Figures/01_explore_para_range/
+04_Figures/02_sensitivity_analysis/
+04_Figures/03_simulation_experiment/
