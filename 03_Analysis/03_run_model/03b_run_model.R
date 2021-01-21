@@ -9,224 +9,189 @@
 #-------------------#
 # Purpose of Script #
 #-------------------#
-# Plot results of model runs w/o and with attraction
+# Run the model for different fish populations w/o and with attraction
 
 #### Import libraries and data ####
 
 # load packages #
-source("Helper_functions/setup.R")
+source("01_Helper_functions/setup.R")
 
-source("Helper_functions/calc_biomass_dist.R")
+parameters <- arrR::read_parameters(file = "02_Data/01_Raw/parameters.csv", sep = ";")
 
-result_null <- readr::read_rds("Data/Modified/03_run_model/result_null.rds")
+starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting_values.csv", sep = ";")
 
-result_rand <- readr::read_rds("Data/Modified/03_run_model/result_rand.rds")
+#### Set arguments to run model ####
 
-result_attr <- readr::read_rds("Data/Modified/03_run_model/result_attr.rds")
+# set minutes per iteration
+min_per_i <- 120
 
-# # import all model runs for default and changed parameters
-# result_rand <- list.files(path = "~/Downloads/results/",
-#                           pattern = "^result_rand", full.names = TRUE) %>%
-#   stringr::str_sort(numeric = TRUE) %>%
-#   purrr::map(readr::read_rds)
+# run model for n years
+years <- 50
+
+max_i <- 100 # (60 * 24 * 365 * years) / min_per_i
+
+# save each m days
+days <- 25
+
+save_each <- 5 # (24 / (min_per_i / 60)) * days
+
+# check if combination of max_i and save_each are possible
+max_i %% save_each
+
+# set burn_in based on 03a_run_model
+burn_in <- 10 # 50000 # round(burn_in * 120 / 60 / 24 /365, 2) 
+
+# extent and grain of seafloor
+extent <- c(50, 50)
+
+grain <- c(1, 1)
+
+# create reef
+reef_matrix <- matrix(data = c(-1, 0, 0, 1, 1, 0, 0, -1, 0, 0),
+                      ncol = 2, byrow = TRUE)
+
+# use starting log distribution of size
+use_log <- TRUE
+
+# print progress
+verbose <- FALSE
+
+#### Setup seafloor and sequence of fish population #### 
+
+# set repetitions
+repetitions <- 3 # 25
+
+# sequence nutrients pool sequence
+nutrients_pool <- seq(from = 0.25, to = 1.5, by = 0.25)
+
+# sequence of fish population
+pop_n <- seq(from = 5, to = 125, by = 20)
+
+# get all combinations
+sim_experiment <- expand.grid(nutrients_pool = nutrients_pool,
+                              pop_n = pop_n)
+
+# repeat all combinations and combine to final data.frame
+sim_experiment <- dplyr::bind_cols(nutrients_pool = rep(sim_experiment$nutrients_pool, 
+                                                        each = repetitions), 
+                                   pop_n = rep(sim_experiment$pop_n, 
+                                               each = repetitions))
+
+input_data_list <- purrr::map(1:nrow(sim_experiment), function(i) {
+  
+  starting_values$nutrients_pool <- sim_experiment[[i, "nutrients_pool"]]
+  
+  starting_values$detritus_pool <- sim_experiment[[i, "nutrients_pool"]]
+  
+  starting_values$pop_n <- sim_experiment[[i, "pop_n"]]
+  
+  # create seafloor
+  input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain,
+                                         reefs = reef_matrix,
+                                         starting_values = starting_values,
+                                         verbose = verbose)
+  
+  input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, 
+                                       starting_values = starting_values, 
+                                       parameters = parameters, use_log = use_log, 
+                                       verbose = verbose)
+  
+  list(seafloor = input_seafloor, fishpop = input_fishpop)
+  })
+
+# # set names
+# names(input_data_list) <- paste0("nutr_", sim_experiment$nutrients_pool, 
+#                                  "_popn_", sim_experiment$pop_n)
+
+#### Setup future plan ####
+
+# # login node -> cluster nodes -> core
+# login <- tweak(remote, workers = "greatlakes.arc-ts.umich.edu", user = "mhessel")
 # 
-# # import all model runs for default and changed parameters
-# result_attr <- list.files(path = "~/Downloads/results/",
-#                           pattern = "^result_attr_", full.names = TRUE) %>%
-#   stringr::str_sort(numeric = TRUE) %>%
-#   purrr::map(readr::read_rds)
+# sbatch <- tweak(batchtools_slurm, template = "future_slurm.tmpl",
+#                 resources = list(job_name = "run_model",
+#                                  log_file = "run_model.log",
+#                                  walltime = "02:00:00", # walltime <hh:mm:ss>
+#                                  mem_cpu  = "7G")) # memory per core in mb
+# 
+# plan(list(
+#   login,
+#   sbatch,
+#   sequential
+# ))
 
-#### Get envelope of biomass at distance ####
+plan(list(
+  sequential,
+  sequential,
+  sequential
+))
 
-dist_null_sum <- purrr::map_dfr(result_null, calc_biomass_dist, .id = "id") %>% 
-  dplyr::group_by(reef_dist_clss) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass, na.rm = TRUE), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-reef_dist_clss) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "null")
+globals_model <- list(parameters = parameters,
+                      max_i = max_i, burn_in = burn_in, min_per_i = min_per_i, 
+                      save_each = save_each)
 
-dist_rand_sum <- purrr::map_dfr(result_rand, calc_biomass_dist, .id = "id") %>% 
-  dplyr::group_by(reef_dist_clss) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-reef_dist_clss) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "rand")
+#### Run model  ####
 
-dist_attr_sum <- purrr::map_dfr(result_attr, calc_biomass_dist, .id = "id") %>% 
-  dplyr::group_by(reef_dist_clss) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-reef_dist_clss) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "attr")
+# run model with random movement
+result_rand %<-% future.apply::future_lapply(seq_along(input_data_list), FUN = function(i) {
+  
+  result %<-% {
+    
+    # run model
+    result_temp <- arrR::run_simulation(seafloor = input_data_list[[i]]$seafloor,
+                                        fishpop = input_data_list[[i]]$fishpop,
+                                        parameters = parameters,
+                                        reef_attraction = FALSE,
+                                        max_i = max_i, burn_in = burn_in, 
+                                        min_per_i = min_per_i,
+                                        save_each = save_each,
+                                        verbose = FALSE) 
+    
+    # create filename
+    # file_name <- paste0("/home/mhessel/results/result_rand_", i, ".rds")
+    file_name <- paste0("~/Downloads/results/result_rand_", i, ".rds")
 
-dist_total_sum <- dplyr::bind_rows(dist_null_sum, dist_rand_sum, dist_attr_sum) %>% 
-  dplyr::mutate(biomass = factor(biomass, levels = c("ag", "bg"), 
-                                 labels = c("Aboveground biomass", "Belowground biomass")), 
-                move = factor(move, levels = c("null", "rand", "attr"), 
-                              labels = c("No fish", "Random movement", "Attracted movement"))) %>% 
-  tidyr::replace_na(replace = list(sd = 0))
+    # save result explicit in folder
+    saveRDS(object = result_temp, file = file_name)
 
-#### Biomass over time ####
+    # only return string
+    file_name
+    
+  }
+}, future.globals = globals_model, future.seed = 42)
 
-time_null_sum <- purrr::map_dfr(result_null, 
-                                function(i) summarize_mdlrn(i, summary = "mean")$seafloor, 
-                                .id = "id") %>% 
-  dplyr::group_by(timestep) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-timestep) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "null")
+# run model with attracted movement
+result_attr %<-% future.apply::future_lapply(seq_along(input_data_list), FUN = function(i) {
+  
+  result %<-% {
+    
+    # run model
+    result_temp <- arrR::run_simulation(seafloor = input_data_list[[i]]$seafloor,
+                                        fishpop = input_data_list[[i]]$fishpop,
+                                        parameters = parameters,
+                                        reef_attraction = TRUE,
+                                        max_i = max_i, burn_in = burn_in, 
+                                        min_per_i = min_per_i,
+                                        save_each = save_each,
+                                        verbose = FALSE) 
+    
+    # create filename
+    # file_name <- paste0("/home/mhessel/results/result_attr_", i, ".rds")
+    file_name <- paste0("~/Downloads/results/result_attr_", i, ".rds")
+    
+    # save result explicit in folder
+    saveRDS(object = result_temp, file = file_name)
+    
+    # only return string
+    file_name
+    
+  }
+}, future.globals = globals_model, future.seed = 42)
 
-time_rand_sum <- purrr::map_dfr(result_rand, 
-                                function(i) summarize_mdlrn(i, summary = "mean")$seafloor, 
-                                .id = "id") %>% 
-  dplyr::group_by(timestep) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-timestep) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "rand")
+#### Save results ####
 
-time_attr_sum <- purrr::map_dfr(result_attr, 
-                                function(i) summarize_mdlrn(i, summary = "mean")$seafloor, 
-                                .id = "id") %>% 
-  dplyr::group_by(timestep) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-timestep) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "attr")
+# Get results from HPC /home/mhessel/results/
 
-time_total_sum <- dplyr::bind_rows(time_null_sum, time_rand_sum, time_attr_sum) %>% 
-  dplyr::mutate(biomass = factor(biomass, levels = c("ag", "bg"), 
-                                 labels = c("Aboveground biomass", "Belowground biomass")), 
-                move = factor(move, levels = c("null", "rand", "attr"), 
-                              labels = c("No fish", "Random movement", "Attracted movement")), 
-                timestep = (timestep * 120) / 60 / 24) %>% 
-  tidyr::replace_na(replace = list(sd = 0))
-
-#### Biomass map ####
-
-map_null_sum <- purrr::map_dfr(result_null,function(i) filter_mdlrn(i)$seafloor, .id = "id") %>% 
-  dplyr::group_by(x, y) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-c(x, y)) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "null")
-
-map_rand_sum <- purrr::map_dfr(result_rand, function(i) filter_mdlrn(i)$seafloor, .id = "id") %>% 
-  dplyr::group_by(x, y) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-c(x, y)) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "rand")
-
-map_attr_sum <- purrr::map_dfr(result_attr, function(i) filter_mdlrn(i)$seafloor, .id = "id") %>% 
-  dplyr::group_by(x, y) %>% 
-  dplyr::summarise(bg_mean = mean(bg_biomass),
-                   bg_sd = sd(bg_biomass), 
-                   ag_mean = mean(ag_biomass),
-                   ag_sd = sd(ag_biomass)) %>% 
-  tidyr::pivot_longer(-c(x, y)) %>% 
-  tidyr::separate(name, sep = "_", into = c("biomass", "distr")) %>% 
-  tidyr::pivot_wider(names_from = distr, values_from = value) %>% 
-  dplyr::mutate(move = "attr")
-
-map_total_sum <- dplyr::bind_rows(map_null_sum, map_rand_sum, map_attr_sum) %>% 
-  dplyr::mutate(biomass = factor(biomass, levels = c("ag", "bg"), 
-                                 labels = c("Aboveground biomass", "Belowground biomass")), 
-                move = factor(move, levels = c("null", "rand", "attr"), 
-                              labels = c("No fish", "Random movement", "Attracted movement"))) %>% 
-  tidyr::replace_na(replace = list(sd = 0))
-
-
-#### Create ggplot ####
-
-ggplot_compare_dist <- ggplot(data = dist_total_sum) + 
-  geom_ribbon(aes(x = reef_dist_clss, ymin = mean - sd, ymax = mean + sd, fill = move), alpha = 0.3) + 
-  geom_line(aes(x = reef_dist_clss, y = mean, col = move)) +
-  facet_wrap(~ biomass, scales = "free_y", nrow = 2) + 
-  scale_color_viridis_d(name = "Movement") +
-  scale_fill_viridis_d(name = "Movement") +
-  scale_x_continuous(breaks = seq(from = 1, to = 34, by = 2), limits = c(1, 34)) +
-  labs(x = "Distance to reef [m]", y = "Biomass dry [g/cell]") +
-  theme_classic() + 
-  theme(legend.position = "bottom")
-
-ggplot_compare_time <- ggplot(data = time_total_sum) + 
-  geom_ribbon(aes(x = timestep, ymin = mean - sd, ymax = mean + sd, fill = move), alpha = 0.3) +
-  geom_line(aes(x = timestep, y = mean, col = move)) +
-  facet_wrap(~ biomass, scales = "free_y", nrow = 2) + 
-  scale_color_viridis_d(name = "Movement") +
-  scale_fill_viridis_d(name = "Movement") +
-  scale_x_continuous(breaks = seq(from = 0, to = 1095, by = 120), limits = c(0, 1095)) +
-  labs(x = "Days", y = "Biomass dry [g/cell]") +
-  theme_classic() + 
-  theme(legend.position = "bottom")
-
-ggplot_compare_map <- ggplot(data = map_total_sum) + 
-  geom_raster(aes(x = x, y = y, fill = mean)) +
-  facet_wrap(~ biomass + move, nrow = 2) + 
-  scale_fill_gradientn(colours = c("#368AC0", "#F4B5BD", "#EC747F"),
-                       na.value = "#9B964A", name = "Biomass dry [g/cell]") +
-  coord_equal() +
-  theme_classic() + 
-  theme(legend.position = "bottom")
-
-#### Save ggplots ####
-
-overwrite <- FALSE
-
-# save plot
-suppoRt::save_ggplot(plot = ggplot_compare_dist, 
-                     filename = "ggplot_compare_dist.png", 
-                     path = "Figures/",     
-                     dpi = dpi,
-                     width = height_full, height = width_full, units = units, 
-                     overwrite = overwrite)
-
-# save plot
-suppoRt::save_ggplot(plot = ggplot_compare_time, 
-                     filename = "ggplot_compare_time.png", 
-                     path = "Figures/",     
-                     dpi = dpi,
-                     width = height_full, height = width_full, units = units, 
-                     overwrite = overwrite)
-
-# save plot
-suppoRt::save_ggplot(plot = ggplot_compare_map, 
-                     filename = "ggplot_compare_map.png", 
-                     path = "Figures/",     
-                     dpi = dpi,
-                     width = height_full, height = width_full, units = units, 
-                     overwrite = overwrite)
+suppoRt::save_rds(object = sim_experiment, filename = "sim_experiment.rds", 
+                  path = "02_Data/02_Modified/03_run_model/", 
+                  overwrite = FALSE)
