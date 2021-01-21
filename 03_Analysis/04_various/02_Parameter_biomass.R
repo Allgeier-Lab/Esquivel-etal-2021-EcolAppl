@@ -71,10 +71,10 @@ yo_mama_cln <- dplyr::filter(yo_mama, treat %in% c("a", "b")) %>%
 
 bridget_2021_cln <- dplyr::filter(bridget_2021, treatment %in% c("A", "B")) %>%
   dplyr::select(core_id, distance, shoots, sheaths, rhizomes, roots) %>% 
+  dplyr::filter(complete.cases(.)) %>% 
   tidyr::pivot_longer(-c(core_id, distance), names_to = "class", values_to = "value") %>% 
   dplyr::mutate(class = dplyr::case_when(class %in% c("shoots", "sheaths") ~ "ag",
                                          class %in% c("rhizomes", "roots") ~ "bg")) %>% 
-  dplyr::filter(complete.cases(.)) %>% 
   dplyr::group_by(core_id, distance, class) %>% 
   dplyr::summarise(value = sum(value), .groups = "drop") %>% 
   dplyr::select(-core_id) %>% 
@@ -93,11 +93,15 @@ biomass_pooled <- dplyr::bind_rows(layman = layman_2016_cln, yo_mama = yo_mama_c
   dplyr::filter(dist < 100, dist > 5)
 
 ggplot(data = biomass_pooled) + 
-  geom_density(aes(value, col = source)) + 
-  facet_wrap(~name, scales = "free")
+  geom_density(aes(value, col = source, fill = source), alpha = 0.1) + 
+  facet_wrap(~name, scales = "free") + 
+  scale_color_viridis_d(name = "Data source") +
+  scale_fill_viridis_d(name = "Data source") +
+  labs(x = "Biomass [g/sqm]", y = "Smoothed density") +
+  theme_classic()
 
 dplyr::group_by(biomass_pooled, name) %>% 
   dplyr::summarise(min = min(value), low = quantile(value, probs = 0.25),
-                   mean = mean(value), median = mean(value),
+                   mean = mean(value), median = median(value),
                    hi = quantile(value, probs = 0.75), max = max(value), 
                    sd = sd(value), n = dplyr::n())
