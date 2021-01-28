@@ -131,7 +131,7 @@ results_explore %<-% future.apply::future_lapply(1:nrow(full_design), FUN = func
     file_name
     
   }
-}, future.globals = globals_nutrients, future.seed = 42)
+}, future.globals = globals_nutrients, future.seed = 42L)
 
 #### Save results ####
 

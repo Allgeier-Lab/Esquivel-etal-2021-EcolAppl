@@ -27,6 +27,7 @@
 # load packages #
 source("01_Helper_functions/setup.R")
 
+# load data layman
 layman_2016 <- readxl::read_xlsx("02_Data/01_Raw/Layman_2016_Blade_data.xlsx")
 
 yo_mama <- readxl::read_xlsx("02_Data/01_Raw/YoMama_Blade_data.xlsx")
@@ -35,9 +36,9 @@ yo_mama <- readxl::read_xlsx("02_Data/01_Raw/YoMama_Blade_data.xlsx")
 bridget_2021 <- readxl::read_xlsx("02_Data/01_Raw/Data_Bridget_040121.xlsx", 
                                   sheet = "Biomass")
 
-# load Bahamas data
-bahamas_2018 <- readxl::read_xlsx("02_Data/01_Raw/Haiti_Bahamas_Morph_Growth_Herbivory_2018.xlsx",
-                                  sheet = "Bahamas Blade Level Data")
+# # load Bahamas data
+# bahamas_2018 <- readxl::read_xlsx("02_Data/01_Raw/Haiti_Bahamas_Morph_Growth_Herbivory_2018.xlsx",
+#                                   sheet = "Bahamas Blade Level Data")
 
 surface_biomass_lm <- readr::read_rds("02_Data/02_Modified/04_various/surface_biomass_lm.rds")
 
@@ -48,20 +49,23 @@ names(bridget_2021) <- stringr::str_replace_all(string = names(bridget_2021),
                                                 pattern = " ", replace = "_") %>%
   stringr::str_to_lower()
 
-# rename cols without empty space
-names(bahamas_2018) <- stringr::str_replace_all(string = names(bahamas_2018), 
-                                                pattern = " ", replace = "_") %>% 
-  stringr::str_to_lower()
+# # rename cols without empty space
+# names(bahamas_2018) <- stringr::str_replace_all(string = names(bahamas_2018), 
+#                                                 pattern = " ", replace = "_") %>% 
+#   stringr::str_to_lower()
 
 #### Pre-process data ####
 
+# filter only treatment A/B; scale to sqm
+# "[...] Cores were taken with a 12.7cm diameter pvc pipe [...]"
 layman_2016_cln <- dplyr::filter(layman_2016, treat %in% c("A", "B")) %>% 
   dplyr::select(dist, b.bio, below.bio) %>% 
   tidyr::pivot_longer(-dist) %>% 
-  dplyr::mutate(value = value * 100,
+  dplyr::mutate(value = value * pi * (12.7 / 2) ^ 2,
                 name = dplyr::case_when(name == "b.bio" ~ "ag", 
                                         name == "below.bio" ~ "bg"))
 
+# filter treatment a/b; convert area to biomass
 yo_mama_cln <- dplyr::filter(yo_mama, treat %in% c("a", "b")) %>% 
   dplyr::mutate(value = exp(surface_biomass_lm$coefficients[[1]] + 
                                 surface_biomass_lm$coefficients[[2]] * log(tot.b.area)) * 100) %>% 
@@ -69,6 +73,8 @@ yo_mama_cln <- dplyr::filter(yo_mama, treat %in% c("a", "b")) %>%
   dplyr::mutate(name = "ag") %>% 
   purrr::set_names(c("dist", "value", "name"))
 
+# filter treatment A/B; only complete cases because NA just not measured yet; classify parts as ag/bg;
+# get sum per core 
 bridget_2021_cln <- dplyr::filter(bridget_2021, treatment %in% c("A", "B")) %>%
   dplyr::select(core_id, distance, shoots, sheaths, rhizomes, roots) %>% 
   dplyr::filter(complete.cases(.)) %>% 
@@ -80,6 +86,7 @@ bridget_2021_cln <- dplyr::filter(bridget_2021, treatment %in% c("A", "B")) %>%
   dplyr::select(-core_id) %>% 
   purrr::set_names(c("dist", "name", "value"))
 
+# remove last rows with NA; to get sum per core unique values because weight on shoot level; scale to sqm
 bahamas_2018_cln <- dplyr::select(bahamas_2018, reef, dist, transect, blade_dry_weight) %>% 
   dplyr::filter(!is.na(blade_dry_weight)) %>% 
   dplyr::group_by(reef, dist, transect) %>% 
@@ -87,12 +94,18 @@ bahamas_2018_cln <- dplyr::select(bahamas_2018, reef, dist, transect, blade_dry_
   select(-c(reef, transect)) %>% 
   dplyr::mutate(name = "ag")
 
-biomass_pooled <- dplyr::bind_rows(layman = layman_2016_cln, yo_mama = yo_mama_cln,  
-                                   bridget = bridget_2021_cln, bahamas = bahamas_2018_cln, 
-                                   .id = "source") %>% 
-  dplyr::filter(dist < 100, dist > 5)
+# create one data.frame; filter distance between 5 - 100 m
+biomass_pooled <- dplyr::bind_rows(layman = layman_2016_cln, 
+                                   yo_mama = yo_mama_cln,  
+                                   bridget = bridget_2021_cln, 
+                                   # bahamas = bahamas_2018_cln, 
+                                   .id = "source")
 
-ggplot(data = biomass_pooled) + 
+# get count of present distance classes
+table(biomass_pooled$dist)
+
+# create density plots
+gg_biomass_range <- ggplot(data = biomass_pooled) + 
   geom_density(aes(value, col = source, fill = source), alpha = 0.1) + 
   facet_wrap(~name, scales = "free") + 
   scale_color_viridis_d(name = "Data source") +
@@ -100,8 +113,10 @@ ggplot(data = biomass_pooled) +
   labs(x = "Biomass [g/sqm]", y = "Smoothed density") +
   theme_classic()
 
-dplyr::group_by(biomass_pooled, name) %>% 
+# summarize results
+(biomass_values <- dplyr::group_by(biomass_pooled, name) %>% 
   dplyr::summarise(min = min(value), low = quantile(value, probs = 0.25),
                    mean = mean(value), median = median(value),
                    hi = quantile(value, probs = 0.75), max = max(value), 
-                   sd = sd(value), n = dplyr::n())
+                   sd = sd(value), n = dplyr::n()) %>% 
+  dplyr::mutate(starting = min + ((max - min) * 0.01)))

@@ -203,7 +203,7 @@ results_sobol %<-% future.apply::future_lapply(seq_along(param_sampled), FUN = f
     file_name
     
   }
-}, future.globals = globals_sobol, future.seed = 42)
+}, future.globals = globals_sobol, future.seed = 42L)
 
 #### Save results ####
 

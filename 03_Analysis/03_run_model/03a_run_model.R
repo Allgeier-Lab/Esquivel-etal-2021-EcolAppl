@@ -33,7 +33,7 @@ years <- 50
 max_i <- (60 * 24 * 365 * years) / min_per_i
 
 # save each m days
-days <- 25
+days <- 125
 
 save_each <- (24 / (min_per_i / 60)) * days
 
@@ -61,8 +61,6 @@ input_seafloor_list <- purrr::map(nutrients_pool, function(i){
   
   starting_values$nutrients_pool <- i
   
-  starting_values$detritus_pool <- i
-  
   arrR::setup_seafloor(extent = extent, grain = grain,
                        reefs = reef_matrix,
                        starting_values = starting_values,
@@ -71,8 +69,10 @@ input_seafloor_list <- purrr::map(nutrients_pool, function(i){
 
 #### Run model  ####
 
+future::plan(future::multisession)
+
 # run model
-result_null <- purrr::map(input_seafloor_list, function(i) {
+result_null <- future.apply::future_lapply(input_seafloor_list, function(i) {
   
   arrR::run_simulation(seafloor = i,
                        fishpop = NULL,
@@ -81,7 +81,7 @@ result_null <- purrr::map(input_seafloor_list, function(i) {
                        max_i = max_i, min_per_i = min_per_i,
                        save_each = save_each,
                        verbose = verbose) 
-  })
+  }, future.seed = 42L)
 
 #### Plot results ####
 

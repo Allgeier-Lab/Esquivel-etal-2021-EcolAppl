@@ -128,7 +128,7 @@ results_default %<-% future.apply::future_lapply(1:repetitions, FUN = function(i
     file_name
     
   }
-}, future.globals = globals_def, future.seed = 42)
+}, future.globals = globals_def, future.seed = 42L)
 
 #### Change parameters #### 
 
@@ -200,7 +200,7 @@ results_inc_5 %<-% future.apply::future_lapply(seq_along(parameters_inc_5), FUN 
     file_name
     
   }
-}, future.globals = globals_inc_5, future.seed = 42)
+}, future.globals = globals_inc_5, future.seed = 42L)
 
 # decreased by 5%
 globals_dec_5 <- list(starting_values = starting_values, parameters_dec_5 = parameters_dec_5,
@@ -250,7 +250,7 @@ results_dec_5 %<-% future.apply::future_lapply(seq_along(parameters_dec_5), FUN 
     file_name
     
   }
-}, future.globals = globals_dec_5, future.seed = 42)
+}, future.globals = globals_dec_5, future.seed = 42L)
 
 # increased by 10%
 globals_inc_10 <- list(starting_values = starting_values, parameters_inc_10 = parameters_inc_10,
@@ -301,7 +301,7 @@ results_inc_10 %<-% future.apply::future_lapply(seq_along(parameters_inc_10), FU
     file_name
     
   }
-}, future.globals = globals_inc_10, future.seed = 42)
+}, future.globals = globals_inc_10, future.seed = 42L)
 
 # decreased by 10%
 globals_dec_10 <- list(starting_values = starting_values, parameters_dec_10 = parameters_dec_10,
@@ -351,6 +351,6 @@ results_dec_10 %<-% future.apply::future_lapply(seq_along(parameters_dec_10), FU
     file_name
     
   }
-}, future.globals = globals_dec_10, future.seed = 42)
+}, future.globals = globals_dec_10, future.seed = 42L)
 
 # Get data from HPC /home/mhessel/results/
