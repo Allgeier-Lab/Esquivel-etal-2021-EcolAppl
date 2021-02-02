@@ -55,7 +55,7 @@ verbose <- TRUE
 #### Setup seafloor with sequence of nutrients ### 
 
 # No repetitions needed because no stochasticity included w/o fish
-nutrients_pool <- seq(from = 0.25, to = 1.5, by = 0.25)
+nutrients_pool <- seq(from = 0.25, to = 1.25, by = 0.25)
 
 input_seafloor_list <- purrr::map(nutrients_pool, function(i){
   

@@ -65,10 +65,10 @@ verbose <- FALSE
 repetitions <- 10
 
 # sequence nutrients pool sequence
-nutrients_pool <- seq(from = 0.25, to = 1.5, by = 0.25)
+nutrients_pool <- seq(from = 0.25, to = 1.25, by = 0.25)
 
 # sequence of fish population
-pop_n <- seq(from = 5, to = 105, by = 20)
+pop_n <- seq(from = 5, to = 85, by = 20)
 
 # get all combinations
 sim_experiment <- expand.grid(nutrients_pool = nutrients_pool,
@@ -203,22 +203,6 @@ result_attr %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = funct
 #### Save results ####
 
 # Get results from HPC /home/mhessel/results/
-
-# result_rand <- list.files(path = "~/Downloads/results/",
-#                           pattern = "^result_rand", full.names = TRUE) %>%
-#   stringr::str_sort(numeric = TRUE) %>%
-#   purrr::map(readr::read_rds)
-# 
-# suppoRt::save_rds(object = result_rand, filename = "result_rand.rds",
-#                   path = "02_Data/02_Modified/03_run_model/", overwrite = FALSE)
-# 
-# result_attr <- list.files(path = "~/Downloads/results/",
-#                           pattern = "^result_attr_", full.names = TRUE) %>%
-#   stringr::str_sort(numeric = TRUE) %>%
-#   purrr::map(readr::read_rds)
-
-suppoRt::save_rds(object = result_attr, filename = "result_attr.rds",
-                  path = "02_Data/02_Modified/03_run_model/", overwrite = FALSE)
 
 suppoRt::save_rds(object = sim_experiment, filename = "sim_experiment.rds", 
                   path = "02_Data/02_Modified/03_run_model/", 
