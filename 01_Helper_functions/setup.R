@@ -7,7 +7,7 @@
 ##--------------------------------------------##
 
 # load packages #
-library(arrR) # devtools::install_github("Allgeier-Lab/arrR")
+library(arrR) # devtools::install_github("Allgeier-Lab/arrR", ref = "development")
 library(cowplot)
 library(magrittr)
 library(raster)
@@ -20,16 +20,3 @@ library(tidyverse)
 library(future)
 library(future.batchtools)
 library(future.apply)
-
-# set parameters plotting #
-base_size <- 12.5
-
-width_full <- 210
-width_small <- 175
-
-height_full <- 297
-height_small <- 125
-
-units <- "mm"
-
-dpi <- 300

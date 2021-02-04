@@ -16,9 +16,7 @@
 # load packages #
 source("01_Helper_functions/setup.R")
 
-source("01_Helper_functions/calculate_fish_size.R")
-
-source("01_Helper_functions/calculate_fish_excretion.R")
+source("01_Helper_functions/calc_fishpop_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/03_run_model/sim_experiment.rds")
 
@@ -56,12 +54,12 @@ base_size <- 8.5
 #### Total size over time ####
 
 size_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
-                                 magrittr::extract2("fishpop") %>% 
-                                 calculate_fish_size, .id = "id_sim")
+                              magrittr::extract2("fishpop") %>% 
+                              calc_fish_size(), .id = "id_sim")
 
 size_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
-                                 magrittr::extract2("fishpop") %>% 
-                                 calculate_fish_size, .id = "id_sim")
+                              magrittr::extract2("fishpop") %>% 
+                              calc_fish_size(), .id = "id_sim")
 
 # combine both movement behaviors
 size_combined <- dplyr::bind_rows(size_rand, size_attr, .id = "id_move") %>% 
@@ -85,7 +83,7 @@ gg_size_combined <- ggplot(data = size_combined) +
   coord_cartesian(xlim = c(burn_in, 50)) +
   guides(colour = guide_legend(nrow = 1), 
          fill = guide_legend(nrow = 1)) +
-  labs(x = "Years", y = "Fish length [cm] / Fish weight [g]") + 
+  labs(x = "Years", y = expression(paste(mu, " Fish length [cm] / ", mu, " Fish weight [g]"))) + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom")
 
@@ -93,11 +91,11 @@ gg_size_combined <- ggplot(data = size_combined) +
 
 excretion_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
                                    magrittr::extract2("seafloor") %>% 
-                                   calculate_fish_excretion, .id = "id_sim")
+                                   calc_fish_excretion(n_cells = 2500), .id = "id_sim")
 
 excretion_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
                                    magrittr::extract2("seafloor") %>% 
-                                   calculate_fish_excretion, .id = "id_sim")
+                                   calc_fish_excretion(n_cells = 2500), .id = "id_sim")
 
 # combine both movement behaviors
 excretion_combined <- dplyr::bind_rows(excretion_rand, excretion_attr, .id = "id_move") %>% 
@@ -121,7 +119,44 @@ gg_excretion_combined <- ggplot(data = excretion_combined) +
   coord_cartesian(xlim = c(burn_in, 50)) +
   guides(colour = guide_legend(nrow = 1), 
          fill = guide_legend(nrow = 1)) +
-  labs(x = "Years", y = expression(paste(Sigma, " Nutrients [g]"))) + 
+  labs(x = "Years", y = expression(paste(mu, " Nutrients [g]"))) + 
+  theme_classic(base_size = base_size) + 
+  theme(legend.position = "bottom")
+
+
+#### Mortality ####
+
+mortality_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
+                                   magrittr::extract2("fishpop") %>% 
+                                   calc_fish_mortality(), .id = "id_sim")
+
+mortality_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
+                                   magrittr::extract2("fishpop") %>% 
+                                   calc_fish_mortality(), .id = "id_sim")
+
+# combine both movement behaviors
+mortality_combined <- dplyr::bind_rows(mortality_rand, mortality_attr, .id = "id_move") %>% 
+  dplyr::left_join(sim_experiment, by = c("id_sim" = "id_sim_sub")) %>% 
+  dplyr::group_by(id_move, timestep, mortality, pop_n) %>% 
+  dplyr::summarise(mean = mean(value), sd = sd(value), .groups = "drop") %>% 
+  dplyr::mutate(id_move = factor(id_move, levels = c("1", "2"), 
+                                 labels = c("Random movement", "Attracted movement")), 
+                timestep = (timestep * min_per_i) / 60 / 24 / 365,
+                mortality = factor(mortality, levels = c("died_background", "died_consumption"), 
+                                   labels = c("Background mortality", "Consumption mortality")), 
+                pop_n = factor(pop_n, ordered = TRUE))
+
+gg_mortality_combined <- ggplot(data = mortality_combined) + 
+  # geom_ribbon(aes(x = timestep, ymin = mean - sd, ymax = mean + sd, fill = pop_n), alpha = alpha) +
+  geom_line(aes(x = timestep, y = mean, col = pop_n)) +
+  geom_vline(xintercept = burn_in, linetype = 3, col = "grey") +
+  facet_wrap(~mortality + id_move, nrow = 2, ncol = 2, scales = "free_y") + 
+  scale_fill_viridis_d(name = "Fish population size") +
+  scale_color_viridis_d(name = "Fish population size") +
+  coord_cartesian(xlim = c(burn_in, 50)) +
+  guides(colour = guide_legend(nrow = 1), 
+         fill = guide_legend(nrow = 1)) +
+  labs(x = "Years", y = expression(paste(mu, " Mortality [#]"))) + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom")
 
@@ -143,6 +178,11 @@ suppoRt::save_ggplot(plot = gg_size_combined, filename = "gg_size_combined.png",
                      overwrite = overwrite)
 
 suppoRt::save_ggplot(plot = gg_excretion_combined, filename = "gg_excretion_combined.png",
+                     path = "04_Figures/03_simulation_experiment/",
+                     width = width, height = height, dpi = dpi, units = units,
+                     overwrite = overwrite)
+
+suppoRt::save_ggplot(plot = gg_mortality_combined, filename = "gg_mortality_combined.png",
                      path = "04_Figures/03_simulation_experiment/",
                      width = width, height = height, dpi = dpi, units = units,
                      overwrite = overwrite)

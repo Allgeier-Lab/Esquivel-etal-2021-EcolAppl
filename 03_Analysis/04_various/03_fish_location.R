@@ -93,22 +93,25 @@ seafloor_df <- raster::as.data.frame(input_seafloor$reef, xy = TRUE) %>%
 location_combined <- dplyr::bind_rows(rand = result_rand$fishpop, attr = result_attr$fishpop, 
                                       .id = "id_move") %>% 
   dplyr::mutate(id_move = factor(id_move, levels = c("rand", "attr"), 
-                                 labels = c("Random movement", "Attracted movement")))
+                                 labels = c("A     No influence of AR", "B     Attraction towards AR")))
 
 #### Create plot #### 
 
 # create plot
 gg_fish_location <- ggplot(data = location_combined) + 
   geom_raster(data = seafloor_df, aes(x = x, y = y, fill = reef)) + 
-  geom_point(aes(x = x, y = y), alpha = 0.5) + 
+  geom_point(aes(x = x, y = y, col = factor(id)), alpha = 0.75) + 
   geom_polygon(data = data.frame(x = c(-25, 25, 25, -25), y = c(-25, -25, 25, 25)), 
                aes(x = x, y = y), col = "black", fill = NA) +
   scale_fill_manual(values = c("#CCFBFF", "#9B964A")) +
+  scale_color_viridis_d(option = "A") +
   facet_wrap(~id_move) +
-  guides(fill = FALSE) +
+  guides(fill = FALSE, col = FALSE) +
   coord_equal() + 
-  theme_void()
+  theme_void(base_size = 15) + 
+  theme(strip.text = element_text(hjust = 0.075))
 
 # save ggplot
 suppoRt::save_ggplot(plot = gg_fish_location, filename = "gg_fish_location.png", 
-                     path = "04_Figures/04_various/", overwrite = FALSE)
+                     path = "04_Figures/04_various/", overwrite = FALSE, 
+                     width = 210, height = 297 / 2, dpi = 300, units = "mm")

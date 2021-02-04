@@ -9,20 +9,14 @@
 #-------------------#
 # Purpose of Script #
 #-------------------#
-# Plot results if increasing fish population
+# Plot results with stable nutrients but increasing fish population
 
 #### Import libraries and data ####
 
 # load packages #
 source("01_Helper_functions/setup.R")
 
-source("01_Helper_functions/calculate_total_biomass.R")
-
-source("01_Helper_functions/calculate_total_production.R")
-
-source("01_Helper_functions/calculate_mean_production.R")
-
-source("01_Helper_functions/calculate_dist_production.R")
+source("01_Helper_functions/calc_seagrass_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/03_run_model/sim_experiment.rds")
 
@@ -61,11 +55,11 @@ base_size <- 8.5
 
 biomass_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
                                  magrittr::extract2("seafloor") %>% 
-                                 calculate_total_biomass, .id = "id_sim")
+                                 calc_total_biomass, .id = "id_sim")
 
 biomass_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
                                  magrittr::extract2("seafloor") %>% 
-                                 calculate_total_biomass, .id = "id_sim")
+                                 calc_total_biomass, .id = "id_sim")
 
 # combine both movement behaviors
 biomass_combined <- dplyr::bind_rows(biomass_rand, biomass_attr, .id = "id_move") %>% 
@@ -116,11 +110,11 @@ gg_biomass_combined_diff <- ggplot(data = biomass_combined_diff) +
 
 production_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
                                  magrittr::extract2("seafloor") %>% 
-                                   calculate_total_production, .id = "id_sim")
+                                   calc_total_production, .id = "id_sim")
 
 production_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
                                  magrittr::extract2("seafloor") %>% 
-                                   calculate_total_production, .id = "id_sim")
+                                   calc_total_production, .id = "id_sim")
 
 # combine both movement behaviors
 production_combined <- dplyr::bind_rows(production_rand, production_attr, .id = "id_move") %>% 
@@ -172,12 +166,12 @@ gg_production_combined_diff <- ggplot(data = production_combined_diff) +
 
 # production_mean_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
 #                                          magrittr::extract2("seafloor") %>% 
-#                                          calculate_mean_production(n_cells = 2500),
+#                                          calc_mean_production(n_cells = 2500),
 #                                        .id = "id_sim")
 # 
 # production_mean_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
 #                                          magrittr::extract2("seafloor") %>% 
-#                                          calculate_mean_production(n_cells = 2500),
+#                                          calc_mean_production(n_cells = 2500),
 #                                        .id = "id_sim")
 # 
 # production_mean_combined <- dplyr::bind_rows(production_mean_rand, production_mean_attr, 
@@ -231,12 +225,12 @@ gg_production_combined_diff <- ggplot(data = production_combined_diff) +
 
 production_dist_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
                                          magrittr::extract2("seafloor") %>% 
-                                         calculate_dist_production(),
+                                         calc_dist_production(),
                                        .id = "id_sim")
 
 production_dist_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
                                          magrittr::extract2("seafloor") %>% 
-                                         calculate_dist_production(),
+                                         calc_dist_production(),
                                        .id = "id_sim")
 
 production_dist_combined <- dplyr::bind_rows(production_dist_rand, production_dist_attr, 
@@ -285,6 +279,7 @@ gg_production_dist_diff <- ggplot(data = production_dist_combined_diff) +
 
 #### Save ggplots ####
 
+# set default arguments to save plots
 overwrite <- FALSE
 
 width <- 170
