@@ -52,6 +52,15 @@ calc_dist_production <- function(x) {
   
 }
 
+log_response <- function(data, indices) {
+  
+  x <- data[indices, ] 
+  
+  f <- mean(log(x$attr)) - mean(log(x$rand))
+  
+  return(f)
+} 
+
 # remove_burnin <- function(x) {
 #   
 #   # get burn_in timestep

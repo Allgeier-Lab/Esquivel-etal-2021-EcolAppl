@@ -19,7 +19,7 @@ source("01_Helper_functions/setup.R")
 parameters <- arrR::read_parameters(file = "02_Data/01_Raw/parameters.csv", sep = ";")
 
 # # change bg_thres parameter
-# parameters$bg_thres <- 2/3
+# parameters$bg_thres <- 3/4
 
 starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting_values.csv", sep = ";")
 
@@ -154,7 +154,7 @@ result_rand %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = funct
     file_name
     
   }
-}, future.globals = globals_model, future.seed = 42L)
+}, future.globals = globals_model, future.seed = TRUE)
 
 # run model with attracted movement
 result_attr %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = function(i) {
@@ -198,7 +198,7 @@ result_attr %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = funct
     file_name
     
   }
-}, future.globals = globals_model, future.seed = 42L)
+}, future.globals = globals_model, future.seed = TRUE)
 
 #### Save results ####
 
