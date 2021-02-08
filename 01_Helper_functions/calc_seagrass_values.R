@@ -18,6 +18,15 @@ calc_total_biomass <- function(x) {
   
 }
 
+calc_biomass_xy <- function(x) {
+
+  dplyr::filter(x, timestep == max(timestep)) %>% 
+    dplyr::select(x, y, ag_biomass, bg_biomass) %>% 
+    tidyr::pivot_longer(cols = c(ag_biomass, bg_biomass), 
+                        names_to = "part", values_to = "biomass")
+   
+}
+
 calc_total_production <- function(x) {
   
   dplyr::select(x, timestep, ag_production, bg_production) %>% 
@@ -28,29 +37,38 @@ calc_total_production <- function(x) {
   
 }
 
-calc_mean_production <- function(x, n_cells) {
+calc_production_xy <- function(x) {
   
-  dplyr::select(x, timestep, ag_production, bg_production) %>% 
+  dplyr::filter(x, timestep == max(timestep)) %>% 
+    dplyr::select(x, y, ag_production, bg_production) %>% 
     tidyr::pivot_longer(cols = c(ag_production, bg_production), 
-                        names_to = "part", values_to = "production") %>% 
-    dplyr::group_by(timestep, part) %>% 
-    dplyr::summarise(production = sum(production), .groups = "drop") %>% 
-    dplyr::group_by(part) %>% 
-    dplyr::mutate(production = (production - dplyr::lag(production, default = 0)) / n_cells) %>%
-    dplyr::ungroup()
+                        names_to = "part", values_to = "production")
   
 }
 
-calc_dist_production <- function(x) {
-  
-  dplyr::filter(x, reef == 0, timestep == max(timestep)) %>% 
-    dplyr::select(timestep, reef_dist, ag_production, bg_production) %>% 
-    tidyr::pivot_longer(cols = c(ag_production, bg_production), 
-                        names_to = "part", values_to = "production") %>% 
-    dplyr::group_by(timestep, reef_dist, part) %>% 
-    dplyr::summarise(production = mean(production, na.rm = TRUE), .groups = "drop") 
-  
-}
+# calc_mean_production <- function(x, n_cells) {
+#   
+#   dplyr::select(x, timestep, ag_production, bg_production) %>% 
+#     tidyr::pivot_longer(cols = c(ag_production, bg_production), 
+#                         names_to = "part", values_to = "production") %>% 
+#     dplyr::group_by(timestep, part) %>% 
+#     dplyr::summarise(production = sum(production), .groups = "drop") %>% 
+#     dplyr::group_by(part) %>% 
+#     dplyr::mutate(production = (production - dplyr::lag(production, default = 0)) / n_cells) %>%
+#     dplyr::ungroup()
+#   
+# }
+# 
+# calc_dist_production <- function(x) {
+#   
+#   dplyr::filter(x, reef == 0, timestep == max(timestep)) %>% 
+#     dplyr::select(timestep, reef_dist, ag_production, bg_production) %>% 
+#     tidyr::pivot_longer(cols = c(ag_production, bg_production), 
+#                         names_to = "part", values_to = "production") %>% 
+#     dplyr::group_by(timestep, reef_dist, part) %>% 
+#     dplyr::summarise(production = mean(production, na.rm = TRUE), .groups = "drop") 
+#   
+# }
 
 log_response <- function(data, indices) {
   
@@ -60,6 +78,16 @@ log_response <- function(data, indices) {
   
   return(f)
 } 
+
+calc_total_excretion <- function(x) {
+  
+  dplyr::select(x, timestep, consumption, excretion) %>% 
+    tidyr::pivot_longer(cols = c(consumption, excretion), 
+                        names_to = "type", values_to = "value") %>% 
+    dplyr::group_by(timestep, type) %>% 
+    dplyr::summarise(value = sum(value, na.rm = TRUE), .groups = "drop") 
+  
+}
 
 # remove_burnin <- function(x) {
 #   

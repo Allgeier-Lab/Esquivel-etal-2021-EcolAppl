@@ -8,6 +8,7 @@
 
 # load packages #
 library(arrR) # devtools::install_github("Allgeier-Lab/arrR", ref = "development")
+library(boot)
 library(cowplot)
 library(magrittr)
 library(raster)

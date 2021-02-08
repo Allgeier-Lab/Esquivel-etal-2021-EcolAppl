@@ -136,26 +136,93 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide, production = product
     tibble(measure = i$measure, part = i$part, 
            pop_n = i$pop_n, nutrients_pool = i$nutrients_pool,  
            mean = mean(bootstrap$t[, 1]), sd = sd(bootstrap$t[, 1]))}) %>% 
-  dplyr::mutate(measure = factor(measure, levels = c("biomass", "production"), 
+  dplyr::mutate(measure = factor(measure, levels = c("biomass", "production"),
                                  labels = c("Biomass", "Production")), 
-                part = dplyr::case_when(part %in% c("ag_biomass", "ag_production") ~ "A  Aboveground value",
-                                        part %in% c("bg_biomass", "bg_production") ~ "B  Belowground value"), 
+                part = dplyr::case_when(part %in% c("ag_biomass", "ag_production") ~ "ag",
+                                        part %in% c("bg_biomass", "bg_production") ~ "bg"),
                 pop_n = factor(pop_n, ordered = TRUE), 
-                nutrients_pool = factor(nutrients_pool, ordered = TRUE)) %>% 
-  tidyr::unite(col = "id", pop_n:nutrients_pool) %>% 
-  dplyr::mutate(id = stringr::str_replace(id, pattern = "_", replace = "\n"))
+                nutrients_pool = factor(nutrients_pool, ordered = TRUE), 
+                part_n = paste(part, pop_n, sep = "_"),
+                part_n = factor(part_n, levels = stringr::str_sort(unique(part_n), 
+                                                                   numeric = TRUE)), 
+                part_nutr = paste(part, nutrients_pool, sep = "_"),
+                part_nutr = factor(part_nutr, levels = stringr::str_sort(unique(part_nutr)))) 
 
-gg_response_ratios_full <- ggplot(data = response_ratios) + 
+#### create ggplot #### 
+
+# set position dodge
+pd <- position_dodge(width = 0.25)
+
+lab_part_n <- as_labeller(c("ag_5" = "Aboveground value", 
+                            "ag_25" = "", "ag_45" = "", 
+                            "ag_65" = "", "ag_85" = "", 
+                            "bg_5" = "Belowground value", 
+                            "bg_25" = "", "bg_45" = "", 
+                            "bg_65" = "", "bg_85" = ""))
+
+lab_pop_n <- as_labeller(c(`5` = "5 individuals", `25` = "25 individuals", 
+                           `45` = "45 individuals", `65` = "65 individuals", 
+                           `85` = "85 individuals"))
+
+gg_response_ratios_full_a <- ggplot(data = response_ratios) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
-  geom_linerange(aes(x = id, ymin = mean - sd, ymax = mean + sd, group = measure),
-                 position = position_dodge(width = 0.25), size = 0.5) +
-  geom_point(aes(x = id, y = mean, col = measure),
-             size = 2.5, position = position_dodge(width = 0.25)) +
-  facet_wrap(~part, scales = "free_y", nrow = 2)  + 
+  geom_line(aes(x = nutrients_pool, y = mean, group = measure),
+            col = "lightgrey", position = pd) +
+  geom_linerange(aes(x = nutrients_pool, ymin = mean - sd, ymax = mean + sd, group = measure),
+                 position = pd, size = 0.5) +
+  geom_point(aes(x = nutrients_pool, y = mean, col = measure),
+             size = 2.5, position = pd) +
+  facet_wrap(. ~ part_n + pop_n , scales = "free_y", nrow = 2, ncol = 5, 
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
-  labs(x = "Population size / Nutrient value", y = "Log response ratios") + 
-  theme_classic(base_size = 10) + 
-  theme(legend.position = "bottom", strip.text = element_text(hjust = 0))
+  labs(x = "Nutrient pool", y = "Log response ratios") + 
+  theme_classic(base_size = 12) + 
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
+        strip.background = element_blank())
+
+lab_part_nutr <- as_labeller(c("ag_0.25" = "Aboveground value", 
+                               "ag_0.5" = "", "ag_0.75" = "", 
+                               "ag_1" = "", "ag_1.25" = "", 
+                               "bg_0.25" = "Belowground value", 
+                               "bg_0.5" = "", "bg_0.75" = "", 
+                               "bg_1" = "", "bg_1.25" = ""))
+
+lab_nutrients_pool <- as_labeller(c(`0.25` = "Nutrients pool 0.25", `0.5` = "Nutrients pool 0.5", 
+                                    `0.75` = "Nutrients pool 0.75", `1` = "Nutrients pool 1.0", 
+                                    `1.25` = "Nutrients pool 1.25"))
+
+gg_response_ratios_full_b <- ggplot(data = response_ratios) + 
+  geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
+  geom_line(aes(x = pop_n, y = mean, group = measure),
+            col = "lightgrey", position = pd) +
+  geom_linerange(aes(x = pop_n, ymin = mean - sd, ymax = mean + sd, group = measure),
+                 position = pd, size = 0.5) +
+  geom_point(aes(x = pop_n, y = mean, col = measure),
+             size = 2.5, position = pd) +
+  facet_wrap(. ~ part_nutr + nutrients_pool , scales = "free_y", nrow = 2, ncol = 5, 
+             labeller = labeller(part_nutr = lab_part_nutr, nutrients_pool = lab_nutrients_pool))  + 
+  scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
+  labs(x = "Number of individuals", y = "Log response ratios") + 
+  theme_classic(base_size = 12) + 
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
+        strip.background = element_blank())
+
+# ggplot(data = response_ratios_cln, aes(x = pop_n, y = mean)) +
+#   geom_line(aes(group = interaction(measure, nutrients_pool)), alpha = 0.1) +
+#   geom_point(aes(col = nutrients_pool, shape = measure), size = 1.5) +
+#   # geom_errorbar(aes(ymin = low_rel, ymax = high_rel, col = nutrients_pool),
+#   #               width = 0.1, size = 0.1) +
+#   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
+#   facet_wrap(~ part, scales = "free_y", ncol = 2) +
+#   scale_color_manual(name = "Water column nutrients pool",
+#                      values = c("#ECCBAE", "#046C9A", "#D69C4E", "#ABDDDE", "#000000")) +
+#     scale_shape_manual(name = "Response", values = c(1, 15)) +
+#   labs(x = "Number of fish individuals",
+#        y = "RR") +
+#   theme_classic(base_size = 10) +
+#   theme(legend.position = "bottom")
+
+
 
 #### Delta treatment vs null #### 
 
@@ -289,7 +356,12 @@ units <- "mm"
 
 overwrite <- FALSE
 
-suppoRt::save_ggplot(plot = gg_response_ratios_full, filename = "gg_response_ratios_full.png",
+suppoRt::save_ggplot(plot = gg_response_ratios_full_a, filename = "gg_response_ratios_full_a.png",
+                     path = "04_Figures/03_simulation_experiment/",
+                     width = width, height = height, dpi = dpi, units = units,
+                     overwrite = overwrite)
+
+suppoRt::save_ggplot(plot = gg_response_ratios_full_b, filename = "gg_response_ratios_full_b.png",
                      path = "04_Figures/03_simulation_experiment/",
                      width = width, height = height, dpi = dpi, units = units,
                      overwrite = overwrite)

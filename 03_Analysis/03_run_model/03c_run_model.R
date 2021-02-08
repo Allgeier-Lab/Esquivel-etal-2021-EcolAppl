@@ -98,6 +98,37 @@ production_wide <- dplyr::left_join(x = production_rand, y = production_attr,
   dplyr::rename(value.rand = production.rand, value.attr = production.attr) %>% 
   dplyr::left_join(y = sim_experiment, by = c("id_sim" = "id_sim_sub"))
 
+#### Excretion values #### 
+
+excretion_rand <- purrr::map_dfr(model_runs_rand, function(i) readr::read_rds(i) %>% 
+                                    magrittr::extract2("seafloor") %>% 
+                                    calc_total_excretion, .id = "id_sim") %>% 
+  dplyr::filter(timestep == max(timestep)) %>% 
+  dplyr::left_join(y = sim_experiment, by = c("id_sim" = "id_sim_sub")) %>% 
+  dplyr::group_by(type, pop_n) %>% 
+  dplyr::summarise(value = mean(value), .groups = "drop")
+
+excretion_attr <- purrr::map_dfr(model_runs_attr, function(i) readr::read_rds(i) %>% 
+                                    magrittr::extract2("seafloor") %>% 
+                                    calc_total_excretion, .id = "id_sim") %>% 
+  dplyr::filter(timestep == max(timestep)) %>% 
+  dplyr::left_join(y = sim_experiment, by = c("id_sim" = "id_sim_sub")) %>% 
+  dplyr::group_by(type, pop_n) %>% 
+  dplyr::summarise(value = mean(value), .groups = "drop")
+
+excretion_total <- dplyr::bind_rows(rand = excretion_rand, 
+                                    attr = excretion_attr, .id = "move") %>% 
+  dplyr::group_by(type, pop_n) %>% 
+  dplyr::summarise(mean = mean(value), .groups = "drop") %>% 
+  dplyr::mutate(pop_n = factor(pop_n, ordered = TRUE)) %>% 
+  dplyr::filter(type == "excretion")
+
+dplyr::bind_rows(rand = excretion_rand, 
+                 attr = excretion_attr, .id = "move") %>% 
+  dplyr::group_by(move, type, pop_n) %>% 
+  dplyr::summarise(mean = mean(value), .groups = "drop") %>% 
+  dplyr::filter(type == "excretion")
+
 # # combine both movement behaviors
 # production_combined <- dplyr::bind_rows(production_rand, production_attr, .id = "id_move") %>% 
 #   dplyr::left_join(sim_experiment, by = c("id_sim" = "id_sim_sub")) %>% 
@@ -124,25 +155,42 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide, production = product
     
     tibble(measure = i$measure, part = i$part, 
            pop_n = i$pop_n, nutrients_pool = i$nutrients_pool,  
-           mean = mean(bootstrap$t[, 1]), sd = sd(bootstrap$t[, 1]))}) %>% 
-  dplyr::mutate(measure = factor(measure, levels = c("biomass", "production"), 
-                                 labels = c("Biomass", "Production")), 
-                part = dplyr::case_when(part %in% c("ag_biomass", "ag_production") ~ "A  Aboveground value",
-                                        part %in% c("bg_biomass", "bg_production") ~ "B  Belowground value"), 
-                pop_n = factor(pop_n, ordered = TRUE), 
-                nutrients_pool = factor(nutrients_pool, ordered = TRUE))
+           mean = mean(bootstrap$t[, 1]), sd = sd(bootstrap$t[, 1]))}) # %>% 
 
-gg_response_ratios <- ggplot(data = response_ratios) + 
+
+response_ratios_cln <- dplyr::mutate(response_ratios, measure = factor(measure, levels = c("biomass", "production"), 
+                                 labels = c("Biomass", "Production")), 
+                part = dplyr::case_when(part %in% c("ag_biomass", "ag_production") ~ "Aboveground value",
+                                        part %in% c("bg_biomass", "bg_production") ~ "Belowground value"), 
+                pop_n = factor(pop_n, ordered = TRUE), 
+                nutrients_pool = factor(nutrients_pool, ordered = TRUE)) %>% 
+  dplyr::left_join(y = excretion_total, by = "pop_n", suffix = c("_rr", "_excretion"))
+
+#### create ggplot ####
+
+# set position dodge
+pd <- position_dodge(width = 0.25)
+
+gg_response_ratios <- ggplot(data = response_ratios_cln) + 
+  geom_line(aes(x = pop_n, y = mean_rr, group = measure), 
+                col = "lightgrey", position = pd) +
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
-  geom_linerange(aes(x = pop_n, ymin = mean - sd, ymax = mean + sd, group = measure),
-                 position = position_dodge(width = 0.25), size = 0.5) +
-  geom_point(aes(x = pop_n, y = mean, col = measure),
-             size = 2.5, position = position_dodge(width = 0.25)) +
+  geom_linerange(aes(x = pop_n, ymin = mean_rr - sd, ymax = mean_rr + sd, group = measure),
+                 position = pd, size = 0.5) +
+  geom_point(aes(x = pop_n, y = mean_rr, col = measure),size = 2.5, position = pd) +
   facet_wrap(~part, scales = "free_y", nrow = 1)  + 
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
+  scale_size_continuous(name = "Total excretion by fish individuals") +
   labs(x = "Population size", y = "Log response ratios") + 
-  theme_classic(base_size = 10) + 
-  theme(legend.position = "bottom", strip.text = element_text(hjust = 0))
+  theme_classic(base_size = 12) + 
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
+        strip.background = element_blank())
+
+
+
+#### Excretion  ####
+
+excretion_total
 
 # #### Delta total biomass over time ####
 # 
