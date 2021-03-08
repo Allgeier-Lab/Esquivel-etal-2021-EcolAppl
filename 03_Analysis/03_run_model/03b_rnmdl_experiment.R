@@ -33,19 +33,19 @@ years <- 50
 
 max_i <- (60 * 24 * 365 * years) / min_per_i
 
-# save each m days
-days <- 125
+# # save each m days
+# days <- 125
 
-save_each <- max_i / 100 # (24 / (min_per_i / 60)) * days
+save_each <- max_i #  max_i / 100 # (24 / (min_per_i / 60)) * days
 
 # check if combination of max_i and save_each are possible
 max_i %% save_each
 
-# set burn_in based on 03a_run_model
+# set burn_in based on 03a_rnmdl_nofish.R
 burn_in <- 50000
 
 # extent and grain of seafloor
-extent <- c(50, 50)
+extent <- c(100, 100)
 
 grain <- c(1, 1)
 
@@ -56,19 +56,16 @@ reef_matrix <- matrix(data = c(-1, 0, 0, 1, 1, 0, 0, -1, 0, 0),
 # use starting log distribution of size
 use_log <- TRUE
 
-# print progress
-verbose <- FALSE
-
 #### Setup seafloor and sequence of fish population #### 
 
 # set repetitions
-repetitions <- 10
+repetitions <- 25
 
 # sequence nutrients pool sequence
 nutrients_pool <- seq(from = 0.25, to = 1.25, by = 0.25)
 
 # sequence of fish population
-pop_n <- seq(from = 5, to = 85, by = 20)
+pop_n <- c(1, 2, 4, 8, 16, 32)
 
 # get all combinations
 sim_experiment <- expand.grid(nutrients_pool = nutrients_pool,
@@ -88,7 +85,7 @@ login <- tweak(remote, workers = "greatlakes.arc-ts.umich.edu", user = "mhessel"
 sbatch <- tweak(batchtools_slurm, template = "future_slurm.tmpl",
                 resources = list(job_name = "run_model",
                                  log_file = "run_model.log",
-                                 walltime = "06:00:00", # walltime <hh:mm:ss>
+                                 walltime = "24:00:00", # walltime <hh:mm:ss>
                                  mem_cpu  = "7G")) # memory per core in mb
 
 plan(list(
@@ -112,8 +109,8 @@ globals_model <- list(sim_experiment = sim_experiment,
 
 #### Run model  ####
 
-# run model with random movement
-result_rand %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = function(i) {
+# run model with random and attracted movement
+result_total %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = function(i) {
   
   result %<-% {
     
@@ -134,7 +131,7 @@ result_rand %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = funct
                                          verbose = FALSE)
     
     # run model
-    result_temp <- arrR::run_simulation(seafloor = input_seafloor,
+    result_rand <- arrR::run_simulation(seafloor = input_seafloor,
                                         fishpop = input_fishpop,
                                         parameters = parameters,
                                         reef_attraction = FALSE,
@@ -143,42 +140,8 @@ result_rand %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = funct
                                         save_each = save_each,
                                         verbose = FALSE) 
     
-    # create filename
-    file_name <- paste0("/home/mhessel/results/result_rand_", i, ".rds")
-    # file_name <- paste0("~/Downloads/results/result_rand_", i, ".rds")
-
-    # save result explicit in folder
-    saveRDS(object = result_temp, file = file_name)
-
-    # only return string
-    file_name
-    
-  }
-}, future.globals = globals_model, future.seed = TRUE)
-
-# run model with attracted movement
-result_attr %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = function(i) {
-  
-  result %<-% {
-    
-    # change values
-    starting_values$nutrients_pool <- sim_experiment[[i, "nutrients_pool"]]
-    
-    starting_values$pop_n <- sim_experiment[[i, "pop_n"]]
-    
-    # create seafloor
-    input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain,
-                                           reefs = reef_matrix,
-                                           starting_values = starting_values,
-                                           verbose = FALSE)
-    
-    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, 
-                                         starting_values = starting_values, 
-                                         parameters = parameters, use_log = use_log, 
-                                         verbose = FALSE)
-    
     # run model
-    result_temp <- arrR::run_simulation(seafloor = input_seafloor,
+    result_attr <- arrR::run_simulation(seafloor = input_seafloor,
                                         fishpop = input_fishpop,
                                         parameters = parameters,
                                         reef_attraction = TRUE,
@@ -187,13 +150,15 @@ result_attr %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = funct
                                         save_each = save_each,
                                         verbose = FALSE) 
     
-    # create filename
-    file_name <- paste0("/home/mhessel/results/result_attr_", i, ".rds")
-    # file_name <- paste0("~/Downloads/results/result_attr_", i, ".rds")
+    result_temp <- list(rand = result_rand, attr = result_attr)
     
+    # create filename
+    file_name <- paste0("/home/mhessel/results/mdlrn_", i, ".rds")
+    # file_name <- paste0("~/Downloads/results/mdlrn_", i, ".rds")
+
     # save result explicit in folder
     saveRDS(object = result_temp, file = file_name)
-    
+
     # only return string
     file_name
     
@@ -203,6 +168,28 @@ result_attr %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = funct
 #### Save results ####
 
 # Get results from HPC /home/mhessel/results/
+
+# present_id <- list.files(path = "~/Downloads/results",
+#                          full.names = TRUE, pattern = "^mdlrn_*") %>%
+#   stringr::str_sort(numeric = TRUE) %>%
+#   purrr::map_int(function(i) stringr::str_split(i, pattern = "_",
+#                                                 simplify = TRUE) %>%
+#                magrittr::extract(, 2) %>%
+#                stringr::str_sub(end = -5) %>%
+#                as.integer())
+# 
+# sim_id <- 1:nrow(sim_experiment)
+# 
+# (missing_id <- which(!sim_id %in% present_id))
+# 
+model_runs <- list.files(path = "~/Downloads/results",
+                         full.names = TRUE, pattern = "^mdlrn_*") %>%
+  stringr::str_sort(numeric = TRUE) %>%
+  purrr::map(readr::read_rds)
+
+suppoRt::save_rds(object = model_runs, filename = "model_runs.rds",
+                  path = "02_Data/02_Modified/03_run_model/",
+                  overwrite = FALSE)
 
 suppoRt::save_rds(object = sim_experiment, filename = "sim_experiment.rds", 
                   path = "02_Data/02_Modified/03_run_model/", 

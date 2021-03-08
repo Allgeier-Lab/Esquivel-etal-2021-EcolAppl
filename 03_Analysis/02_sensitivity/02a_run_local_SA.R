@@ -32,19 +32,16 @@ repetitions <- 25
 min_per_i <- 120
 
 # run model for n years
-years <- 20
+years <- 50
 
 max_i <- (60 * 24 * 365 * years) / min_per_i
 
-# save only once; will be filtered for last timestep anyways
-days <- 20
+save_each <- max_i
 
-save_each <- max_i / 1 # (24 / (min_per_i / 60)) * days
-
-burn_in <- max_i * 0.35
+burn_in <- 50000
 
 # extent and grain of seafloor
-extent <- c(50, 50)
+extent <- c(100, 100)
 
 grain <- c(1, 1)
 
@@ -72,7 +69,7 @@ login <- tweak(remote, workers = "greatlakes.arc-ts.umich.edu", user = "mhessel"
 sbatch <- tweak(batchtools_slurm, template = "future_slurm.tmpl",
                 resources = list(job_name = "local_sa",
                                  log_file = "local_sa.log",
-                                 walltime = "02:00:00", # walltime <hh:mm:ss>
+                                 walltime = "24:00:00", # walltime <hh:mm:ss>
                                  mem_cpu  = "7G")) # memory per core in mb
 
 plan(list(
@@ -128,7 +125,7 @@ results_default %<-% future.apply::future_lapply(1:repetitions, FUN = function(i
     file_name
     
   }
-}, future.globals = globals_def, future.seed = 42L)
+}, future.globals = globals_def, future.seed = TRUE)
 
 #### Change parameters #### 
 
@@ -166,6 +163,12 @@ results_inc_5 %<-% future.apply::future_lapply(seq_along(parameters_inc_5), FUN 
     
     parameters_temp <- parameters_inc_5[[i]]
     
+    starting_values$ag_biomass <- parameters_temp$ag_biomass_min + 
+      (parameters_temp$ag_biomass_min * 0.01)
+    
+    starting_values$bg_biomass <- parameters_temp$bg_biomass_min + 
+      (parameters_temp$bg_biomass_min * 0.01)
+    
     # create seafloor
     input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain,
                                            reefs = reef_matrix,
@@ -200,7 +203,7 @@ results_inc_5 %<-% future.apply::future_lapply(seq_along(parameters_inc_5), FUN 
     file_name
     
   }
-}, future.globals = globals_inc_5, future.seed = 42L)
+}, future.globals = globals_inc_5, future.seed = TRUE)
 
 # decreased by 5%
 globals_dec_5 <- list(starting_values = starting_values, parameters_dec_5 = parameters_dec_5,
@@ -215,6 +218,12 @@ results_dec_5 %<-% future.apply::future_lapply(seq_along(parameters_dec_5), FUN 
   result %<-% {
     
     parameters_temp <- parameters_dec_5[[i]]
+    
+    starting_values$ag_biomass <- parameters_temp$ag_biomass_min + 
+      (parameters_temp$ag_biomass_min * 0.01)
+    
+    starting_values$bg_biomass <- parameters_temp$bg_biomass_min + 
+      (parameters_temp$bg_biomass_min * 0.01)
     
     # create seafloor
     input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain,
@@ -250,7 +259,7 @@ results_dec_5 %<-% future.apply::future_lapply(seq_along(parameters_dec_5), FUN 
     file_name
     
   }
-}, future.globals = globals_dec_5, future.seed = 42L)
+}, future.globals = globals_dec_5, future.seed = TRUE)
 
 # increased by 10%
 globals_inc_10 <- list(starting_values = starting_values, parameters_inc_10 = parameters_inc_10,
@@ -266,6 +275,12 @@ results_inc_10 %<-% future.apply::future_lapply(seq_along(parameters_inc_10), FU
   result %<-% {
     
     parameters_temp <- parameters_inc_10[[i]]
+    
+    starting_values$ag_biomass <- parameters_temp$ag_biomass_min + 
+      (parameters_temp$ag_biomass_min * 0.01)
+    
+    starting_values$bg_biomass <- parameters_temp$bg_biomass_min + 
+      (parameters_temp$bg_biomass_min * 0.01)
     
     # create seafloor
     input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain,
@@ -301,7 +316,7 @@ results_inc_10 %<-% future.apply::future_lapply(seq_along(parameters_inc_10), FU
     file_name
     
   }
-}, future.globals = globals_inc_10, future.seed = 42L)
+}, future.globals = globals_inc_10, future.seed = TRUE)
 
 # decreased by 10%
 globals_dec_10 <- list(starting_values = starting_values, parameters_dec_10 = parameters_dec_10,
@@ -316,6 +331,12 @@ results_dec_10 %<-% future.apply::future_lapply(seq_along(parameters_dec_10), FU
   result %<-% {
     
     parameters_temp <- parameters_dec_10[[i]]
+    
+    starting_values$ag_biomass <- parameters_temp$ag_biomass_min + 
+      (parameters_temp$ag_biomass_min * 0.01)
+    
+    starting_values$bg_biomass <- parameters_temp$bg_biomass_min + 
+      (parameters_temp$bg_biomass_min * 0.01)
     
     # create seafloor
     input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain,
@@ -351,6 +372,71 @@ results_dec_10 %<-% future.apply::future_lapply(seq_along(parameters_dec_10), FU
     file_name
     
   }
-}, future.globals = globals_dec_10, future.seed = 42L)
+}, future.globals = globals_dec_10, future.seed = TRUE)
 
-# Get data from HPC /home/mhessel/results/
+#### Get results ####
+
+# # Get data from HPC /home/mhessel/results/
+# 
+# overwrite <- FALSE
+# 
+# # import data model runs
+# model_runs_def <- list.files(path = "~/Downloads/results/",
+#                              pattern = "^local_default_", full.names = TRUE) %>%
+#   stringr::str_sort(numeric = TRUE) %>%
+#   purrr::map(function(i) readr::read_rds(i)) %>%
+#   purrr::set_names(default_names)
+# 
+# # save into one object
+# suppoRt::save_rds(object = model_runs_def, filename = "model_runs_def.rds",
+#                   path = "02_Data/02_Modified/02_sensitivity/",
+#                   overwrite = overwrite)
+# 
+# # import data model runs
+# model_runs_inc_5 <- list.files(path = "~/Downloads/results/",
+#                                pattern = "^local_inc_5", full.names = TRUE) %>%
+#   stringr::str_sort(numeric = TRUE) %>%
+#   purrr::map(function(i) readr::read_rds(i)) %>%
+#   purrr::set_names(parameters_names)
+# 
+# # save into one object
+# suppoRt::save_rds(object = model_runs_inc_5, filename = "model_runs_inc_5.rds",
+#                   path = "02_Data/02_Modified/02_sensitivity/",
+#                   overwrite = overwrite)
+# 
+# # import data model runs
+# model_runs_dec_5 <- list.files(path = "~/Downloads/results/",
+#                                pattern = "^local_dec_5", full.names = TRUE) %>%
+#   stringr::str_sort(numeric = TRUE) %>%
+#   purrr::map(function(i) readr::read_rds(i)) %>%
+#   purrr::set_names(parameters_names)
+# 
+# # save into one object
+# suppoRt::save_rds(object = model_runs_dec_5, filename = "model_runs_dec_5.rds",
+#                   path = "02_Data/02_Modified/02_sensitivity/",
+#                   overwrite = overwrite)
+# 
+# # import data model runs
+# model_runs_inc_10 <- list.files(path = "~/Downloads/results/",
+#                                 pattern = "^local_inc_10", full.names = TRUE) %>%
+#   stringr::str_sort(numeric = TRUE) %>%
+#   purrr::map(function(i) readr::read_rds(i)) %>%
+#   purrr::set_names(parameters_names)
+# 
+# # save into one object
+# suppoRt::save_rds(object = model_runs_inc_10, filename = "model_runs_inc_10.rds",
+#                   path = "02_Data/02_Modified/02_sensitivity/",
+#                   overwrite = overwrite)
+# 
+# # import data model runs
+# model_runs_dec_10 <- list.files(path = "~/Downloads/results/",
+#                                 pattern = "^local_dec_10", full.names = TRUE) %>%
+#   stringr::str_sort(numeric = TRUE) %>%
+#   purrr::map(function(i) readr::read_rds(i)) %>%
+#   c(., rep(x = list(NA), times = repetitions)) %>%
+#   purrr::set_names(parameters_names)
+# 
+# # save into one object
+# suppoRt::save_rds(object = model_runs_dec_10, filename = "model_runs_dec_10.rds",
+#                   path = "02_Data/02_Modified/02_sensitivity/",
+#                   overwrite = overwrite)

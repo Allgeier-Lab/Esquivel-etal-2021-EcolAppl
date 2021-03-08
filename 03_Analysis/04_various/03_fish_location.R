@@ -18,7 +18,7 @@ parameters <- arrR::read_parameters(file = "02_Data/01_Raw/parameters.csv", sep 
 
 starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting_values.csv", sep = ";")
 
-starting_values$pop_n <- 5
+starting_values$pop_n <- 16
 
 #### Set arguments to run model ####
 
@@ -39,7 +39,7 @@ save_each <- (24 / (min_per_i / 60)) * days
 max_i %% save_each
 
 # extent and grain of seafloor
-extent <- c(50, 50)
+extent <- c(100, 100)
 
 grain <- c(1, 1)
 
@@ -93,25 +93,54 @@ seafloor_df <- raster::as.data.frame(input_seafloor$reef, xy = TRUE) %>%
 location_combined <- dplyr::bind_rows(rand = result_rand$fishpop, attr = result_attr$fishpop, 
                                       .id = "id_move") %>% 
   dplyr::mutate(id_move = factor(id_move, levels = c("rand", "attr"), 
-                                 labels = c("A     No influence of AR", "B     Attraction towards AR")))
+                                 labels = c("A", "B")))
+
+#### Create dataframe with excretion #### 
+
+seafloor_df <- raster::as.data.frame(input_seafloor$reef, xy = TRUE) %>% 
+  dplyr::mutate(reef = factor(reef))
+
+excretion_combined <- dplyr::bind_rows(rand = result_rand$seafloor, attr = result_attr$seafloor, 
+                                       .id = "id_move") %>% 
+  dplyr::mutate(id_move = factor(id_move, levels = c("rand", "attr"), 
+                                 labels = c("C", "D")))
 
 #### Create plot #### 
+
+base_size <- 12.5
 
 # create plot
 gg_fish_location <- ggplot(data = location_combined) + 
   geom_raster(data = seafloor_df, aes(x = x, y = y, fill = reef)) + 
-  geom_point(aes(x = x, y = y, col = factor(id)), alpha = 0.75) + 
-  geom_polygon(data = data.frame(x = c(-25, 25, 25, -25), y = c(-25, -25, 25, 25)), 
+  geom_point(aes(x = x, y = y, col = factor(id)), alpha = 0.75, size = 0.75) + 
+  geom_polygon(data = data.frame(x = c(-50, 50, 50, -50), y = c(-50, -50, 50, 50)), 
                aes(x = x, y = y), col = "black", fill = NA) +
   scale_fill_manual(values = c("#CCFBFF", "#9B964A")) +
   scale_color_viridis_d(option = "A") +
   facet_wrap(~id_move) +
   guides(fill = FALSE, col = FALSE) +
   coord_equal() + 
-  theme_void(base_size = 15) + 
+  theme_void(base_size = base_size) + 
   theme(strip.text = element_text(hjust = 0.075))
 
+gg_excretion <- ggplot(data = excretion_combined) + 
+  geom_raster(aes(x = x, y = y, fill = excretion)) + 
+  geom_polygon(data = data.frame(x = c(-50, 50, 50, -50), y = c(-50, -50, 50, 50)), 
+               aes(x = x, y = y), col = "black", fill = NA) +
+  scale_fill_gradientn(colours = viridis::viridis(n = 32, option = "C"), 
+                       breaks = c(0, 1), limits = c(0, 1), labels = c("Low", "High"), 
+                       name = "Total\nexcretion") +
+  guides(fill = FALSE) +
+  facet_wrap(~id_move) +
+  coord_equal() + 
+  theme_void(base_size = base_size) + 
+  theme(strip.text = element_text(hjust = 0.075), 
+        legend.position = "bottom")
+
+gg_location_excretion <- cowplot::plot_grid(gg_fish_location, gg_excretion,
+                                            ncol = 1, nrow = 2)
+
 # save ggplot
-suppoRt::save_ggplot(plot = gg_fish_location, filename = "gg_fish_location.png", 
+suppoRt::save_ggplot(plot = gg_location_excretion, filename = "gg_location_excretion.pdf", 
                      path = "04_Figures/04_various/", overwrite = FALSE, 
-                     width = 210, height = 297 / 2, dpi = 300, units = "mm")
+                     width = width, height = height / 2, dpi = dpi, units = "mm")

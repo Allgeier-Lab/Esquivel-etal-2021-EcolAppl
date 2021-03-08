@@ -22,8 +22,6 @@ starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting_values.
 
 #### Set arguments to run model ####
 
-# repetitions <- 50
-
 # set minutes per iteration
 min_per_i <- 120
 
@@ -41,7 +39,7 @@ save_each <- (24 / (min_per_i / 60)) * days
 max_i %% save_each
 
 # extent and grain of seafloor
-extent <- c(50, 50)
+extent <- c(100, 100)
 
 grain <- c(1, 1)
 
@@ -50,44 +48,38 @@ reef_matrix <- matrix(data = c(-1, 0, 0, 1, 1, 0, 0, -1, 0, 0),
                       ncol = 2, byrow = TRUE)
 
 # print progress
-verbose <- TRUE
-
-#### Setup seafloor with sequence of nutrients ### 
+verbose <- FALSE
 
 # No repetitions needed because no stochasticity included w/o fish
 nutrients_pool <- seq(from = 0.25, to = 1.25, by = 0.25)
-
-input_seafloor_list <- purrr::map(nutrients_pool, function(i){
-  
-  starting_values$nutrients_pool <- i
-  
-  arrR::setup_seafloor(extent = extent, grain = grain,
-                       reefs = reef_matrix,
-                       starting_values = starting_values,
-                       verbose = verbose)
-  })
 
 #### Run model  ####
 
 future::plan(future::multisession)
 
 # run model
-result_null <- future.apply::future_lapply(input_seafloor_list, function(i) {
+result_null <- future.apply::future_lapply(nutrients_pool, function(i) {
   
-  arrR::run_simulation(seafloor = i,
+  starting_values$nutrients_pool <- i
+  
+  input <- arrR::setup_seafloor(extent = extent, grain = grain,
+                                reefs = reef_matrix,
+                                starting_values = starting_values,
+                                verbose = verbose)
+  
+  arrR::run_simulation(seafloor = input,
                        fishpop = NULL,
                        parameters = parameters,
                        reef_attraction = FALSE,
                        max_i = max_i, min_per_i = min_per_i,
                        save_each = save_each,
-                       verbose = verbose) 
-  }, future.seed = 42L)
+                       verbose = verbose)}, future.seed = TRUE)
 
 #### Plot results ####
 
 purrr::map(result_null, plot, summarize = TRUE, burn_in = FALSE)
 
-# Burn_in = 50,000 should okay
+# Burn_in = 50,000 should okay # 
 
 #### Save results ####
 

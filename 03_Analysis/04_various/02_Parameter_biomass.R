@@ -120,3 +120,6 @@ gg_biomass_range <- ggplot(data = biomass_pooled) +
                    hi = quantile(value, probs = 0.75), max = max(value), 
                    sd = sd(value), n = dplyr::n()) %>% 
   dplyr::mutate(starting = min + ((max - min) * 0.01)))
+
+
+

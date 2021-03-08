@@ -122,6 +122,7 @@ overwrite <- FALSE
 suppoRt::save_rds(object = surface_biomass_lm, filename = "surface_biomass_lm.rds", 
                   path = "02_Data/02_Modified/04_various/", overwrite = overwrite)
 
-suppoRt::save_ggplot(plot = gg_surface_biomass, filename = "gg_surface_biomass.png", 
+suppoRt::save_ggplot(plot = gg_surface_biomass, filename = "gg_surface_biomass.pdf", 
+                     dpi = dpi,
                      path = "04_Figures/04_various/")
 
