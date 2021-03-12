@@ -19,5 +19,7 @@ The repository contains the following folders (see README.txt in each folder for
 **Correspondence:**
 
 mhk.hesselbarth@gmail.com
+
 kesquivel@berkeley.edu
+
 jeallg@umich.edu
