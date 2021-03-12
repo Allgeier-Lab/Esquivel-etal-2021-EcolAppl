@@ -146,8 +146,8 @@ biomass_table <- dplyr::group_by(biomass_wide, part, nutrients_pool, pop_n) %>%
   dplyr::mutate(pop_n = factor(pop_n, ordered = TRUE), 
                 nutrients_pool = factor(nutrients_pool, ordered = TRUE)) %>% 
   dplyr::left_join(response_ratios, by = c("part", "measure", "pop_n", "nutrients_pool")) %>% 
-  dplyr::select(pop_n, nutrients_pool, part, value.rand, value.attr, lo, hi) %>% 
-  tidyr::pivot_wider(names_from = part, values_from = c(value.rand, value.attr, lo, hi))
+  dplyr::select(pop_n, nutrients_pool, part, value.rand, value.attr, lo, mean, hi) %>% 
+  tidyr::pivot_wider(names_from = part, values_from = c(value.rand, value.attr, lo, mean, hi))
 
 production_table <- dplyr::group_by(production_wide, part, nutrients_pool, pop_n) %>% 
   dplyr::summarise(value.rand = mean(value.rand), 
@@ -156,17 +156,12 @@ production_table <- dplyr::group_by(production_wide, part, nutrients_pool, pop_n
   dplyr::mutate(pop_n = factor(pop_n, ordered = TRUE), 
                 nutrients_pool = factor(nutrients_pool, ordered = TRUE)) %>% 
   dplyr::left_join(response_ratios, by = c("part", "measure", "pop_n", "nutrients_pool")) %>% 
-  dplyr::select(pop_n, nutrients_pool, part, value.rand, value.attr, lo, hi) %>% 
-  tidyr::pivot_wider(names_from = part, values_from = c(value.rand, value.attr, lo, hi))
+  dplyr::select(pop_n, nutrients_pool, part, value.rand, value.attr, lo, mean, hi) %>% 
+  tidyr::pivot_wider(names_from = part, values_from = c(value.rand, value.attr, lo, mean, hi))
 
 complete_table <- dplyr::left_join(x = biomass_table, y = production_table, 
                                    by = c("pop_n", "nutrients_pool"), 
                                    suffix = c(".biom", ".prod")) %>% 
-  # dplyr::select(pop_n, nutrients_pool, 
-  #               value.rand_ag.biom, value.attr_ag.biom, lo_ag.biom, hi_ag.biom, 
-  #               value.rand_ag.prod, value.attr_ag.prod, lo_ag.prod, hi_ag.prod, 
-  #               value.rand_bg.biom, value.attr_bg.biom, lo_bg.biom, hi_bg.biom, 
-  #               value.rand_bg.prod, value.attr_bg.prod, lo_bg.prod, hi_bg.prod) %>%
   dplyr::mutate(rr_ag.biom = dplyr::case_when(lo_ag.biom < 0 & hi_ag.biom < 0 ~ "rand", 
                                               lo_ag.biom > 0 & hi_ag.biom > 0 ~ "attr",
                                               TRUE ~ "n.s.")) %>% 
@@ -188,6 +183,21 @@ complete_table <- dplyr::left_join(x = biomass_table, y = production_table,
   dplyr::arrange(pop_n)
 
 readr::write_delim(complete_table, file = "02_Data/02_Modified/03_run_model/complete_table.csv",
+                   delim = ";")
+
+
+complete_table_rr <- dplyr::left_join(x = biomass_table, y = production_table, 
+                                      by = c("pop_n", "nutrients_pool"), 
+                                      suffix = c(".biom", ".prod")) %>% 
+  dplyr::select(pop_n, nutrients_pool, 
+                lo_ag.biom, mean_ag.biom, hi_ag.biom,
+                lo_ag.prod, mean_ag.prod, hi_ag.prod,
+                lo_bg.biom, mean_bg.biom, hi_bg.biom,
+                lo_bg.prod, mean_bg.prod, hi_bg.prod) %>% 
+  dplyr::mutate_at(dplyr::vars(-dplyr::all_of(c("pop_n", "nutrients_pool"))), formatC, digits = 2, format = "e") %>%
+  dplyr::arrange(pop_n)
+
+readr::write_delim(complete_table_rr, file = "02_Data/02_Modified/03_run_model/complete_table_rr.csv",
                    delim = ";")
 
 #### Setup ggplots ####
