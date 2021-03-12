@@ -89,7 +89,7 @@ production_wide_ttl <- dplyr::group_by(production_wide,
 pb <- progress::progress_bar$new(total = 2520, width = 60,
                                  format = " Progress [:bar] :percent Remaining: :eta")
 
-repetitions <- 10000
+repetitions <- 1000
 
 response_ratios <- dplyr::bind_rows(biomass = biomass_wide, 
                                     biomass_ttl = biomass_wide_ttl,
@@ -106,10 +106,13 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide,
                                                   attr = i$value.attr), 
                             statistic = log_response, R = repetitions)
     
+    bootstrap_ci <- boot::boot.ci(bootstrap, type = "norm", conf = 0.95)
+    
     tibble(part = unique(i$part), dist_clss = unique(i$dist_clss),
            pop_n = unique(i$pop_n), nutrients_pool = unique(i$nutrients_pool),
            mean = mean(bootstrap$t[, 1]), 
-           se = 1.96 * sd(bootstrap$t[, 1]) / sqrt(nrow(i)))}) %>% 
+           lo = bootstrap_ci$normal[2], 
+           hi = bootstrap_ci$normal[3])}) %>% 
   tidyr::separate(col = part, into = c("part", "measure"), sep = "_") %>% 
   dplyr::mutate(part = factor(part, levels = c("ag", "bg", "ttl")), 
                 measure = factor(measure, levels = c("biomass", "production")), 
@@ -176,7 +179,7 @@ lab_pop_n <- as_labeller(c(`1` = "1 individuals", `2` = "2 individuals",
 
 # # get absolute largest values
 # limits_full <- dplyr::group_by(response_ratios, part) %>% 
-#   dplyr::summarise(l = max(abs(c(mean - se, mean + se))))
+#   dplyr::summarise(l = max(abs(c(lo, hi))))
 
 #### Full design production ####
 
@@ -189,7 +192,7 @@ gg_full_ag_a_prod <- ggplot(data = filter(response_ratios, part == "ag",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -212,7 +215,7 @@ gg_full_ag_b_prod <- ggplot(data = filter(response_ratios, part == "ag",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -235,7 +238,7 @@ gg_full_bg_a_prod <- ggplot(data = filter(response_ratios, part == "bg",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -258,7 +261,7 @@ gg_full_bg_b_prod <- ggplot(data = filter(response_ratios, part == "bg",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -281,7 +284,7 @@ gg_full_ttl_a_prod <- ggplot(data = filter(response_ratios, part == "ttl",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -304,7 +307,7 @@ gg_full_ttl_b_prod <- ggplot(data = filter(response_ratios, part == "ttl",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -345,7 +348,7 @@ gg_full_ag_a_biom <- ggplot(data = filter(response_ratios, part == "ag",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)),
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -368,7 +371,7 @@ gg_full_ag_b_biom <- ggplot(data = filter(response_ratios, part == "ag",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -391,7 +394,7 @@ gg_full_bg_a_biom <- ggplot(data = filter(response_ratios, part == "bg",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -414,7 +417,7 @@ gg_full_bg_b_biom <- ggplot(data = filter(response_ratios, part == "bg",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -437,7 +440,7 @@ gg_full_ttl_a_biom <- ggplot(data = filter(response_ratios, part == "ttl",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -460,7 +463,7 @@ gg_full_ttl_b_biom <- ggplot(data = filter(response_ratios, part == "ttl",
             col = "lightgrey", position = pd) +
   geom_point(aes(x = dist_clss, y = mean, col = nutrients_pool), shape = shape, 
              position = pd) +
-  geom_linerange(aes(x = dist_clss, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = dist_clss, ymin = lo, ymax = hi,
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
@@ -492,12 +495,14 @@ gg_full_design_biom <- plot_grid(gg_full_design_biom, legend_biom,
 
 ### Save ggplot ####
 
+overwrite <- TRUE
+
 suppoRt::save_ggplot(plot = gg_full_design_prod, filename = "gg_full_design_dist_prod.pdf",
                      path = "04_Figures/03_simulation_experiment/",
                      width = width, height = height * 0.5, dpi = dpi, units = units,
-                     overwrite = FALSE)
+                     overwrite = overwrite)
 
 suppoRt::save_ggplot(plot = gg_full_design_biom, filename = "gg_full_design_dist_biom.pdf",
                      path = "04_Figures/03_simulation_experiment/",
                      width = width, height = height * 0.5, dpi = dpi, units = units,
-                     overwrite = FALSE)
+                     overwrite = overwrite)
