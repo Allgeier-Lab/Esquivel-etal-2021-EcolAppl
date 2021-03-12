@@ -18,15 +18,16 @@ source("01_Helper_functions/setup.R")
 
 source("01_Helper_functions/calc_seagrass_values.R")
 
-experiment <- readr::read_rds("02_Data/02_Modified/03_run_model/sim_experiment.rds")
+sim_experiment <- readr::read_rds("02_Data/02_Modified/03_run_model/sim_experiment.rds")
 
 model_runs <- readr::read_rds("02_Data/02_Modified/03_run_model/model_runs.rds")
 
 #### Preprocess data #### 
 
 # add row id to sim_experiment
-experiment <- dplyr::mutate(experiment, id = as.character(1:nrow(experiment)), 
-                            .before = "nutrients_pool")
+sim_experiment <- dplyr::mutate(sim_experiment, 
+                                id = as.character(1:nrow(sim_experiment)), 
+                                .before = "nutrients_pool")
 
 norm <- FALSE
 
@@ -62,7 +63,7 @@ biomass_attr <- purrr::map_dfr(model_runs, function(i)
 biomass_wide <- dplyr::left_join(x = biomass_rand, y = biomass_attr, 
                                  by = c("id", "part"), 
                                  suffix = c(".rand", ".attr")) %>% 
-  dplyr::left_join(experiment, by = "id")
+  dplyr::left_join(sim_experiment, by = "id")
 
 # calculate total bg/ag biomass
 biomass_wide_ttl <- dplyr::group_by(biomass_wide, 
@@ -88,7 +89,7 @@ production_attr <- purrr::map_dfr(model_runs, function(i)
 production_wide <- dplyr::left_join(x = production_rand, y = production_attr, 
                                  by = c("id", "part"), 
                                  suffix = c(".rand", ".attr")) %>% 
-  dplyr::left_join(experiment, by = "id")
+  dplyr::left_join(sim_experiment, by = "id")
 
 # calculate total bg/ag production
 production_wide_ttl <- dplyr::group_by(production_wide, 
@@ -102,7 +103,7 @@ production_wide_ttl <- dplyr::group_by(production_wide,
 pb <- progress::progress_bar$new(total = 180, width = 60,
                                  format = " Progress [:bar] :percent Remaining: :eta")
 
-repetitions <- 10000
+repetitions <- 100
 
 response_ratios <- dplyr::bind_rows(biomass = biomass_wide, 
                                     biomass_ttl = biomass_wide_ttl,
@@ -121,7 +122,7 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide,
     tibble(part = unique(i$part),
            pop_n = unique(i$pop_n), nutrients_pool = unique(i$nutrients_pool),
            mean = mean(bootstrap$t[, 1]), 
-           se = 1.96 * (sd(bootstrap$t[, 1]) / sqrt(nrow(i))))}) %>% 
+           ci = 1.96 * (sd(bootstrap$t[, 1]) / sqrt(nrow(i))))}) %>% 
   tidyr::separate(col = part, into = c("part", "measure"), sep = "_") %>% 
   dplyr::mutate(part = factor(part, levels = c("ag", "bg", "ttl")), 
                 measure = factor(measure, levels = c("biomass", "production")), 
@@ -133,6 +134,28 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide,
                 part_nutr = paste(part, nutrients_pool, sep = "_"),
                 part_nutr = factor(part_nutr, levels = stringr::str_sort(unique(part_nutr)))) 
   
+#### Overview table ####
+
+biomass_table <- dplyr::group_by(biomass_wide, part, nutrients_pool, pop_n) %>% 
+  dplyr::summarise(value.rand = mean(value.rand), 
+                   value.attr = mean(value.attr), .groups = "drop") %>% 
+  tidyr::separate(col = part, into = c("part", "measure"), sep = "_") %>% 
+  dplyr::mutate(pop_n = factor(pop_n, ordered = TRUE), 
+                nutrients_pool = factor(nutrients_pool, ordered = TRUE)) %>% 
+  dplyr::left_join(response_ratios, by = c("part", "measure", "pop_n", "nutrients_pool")) %>% 
+  dplyr::select(part, measure, nutrients_pool, pop_n, value.rand, value.attr, mean, ci) %>% 
+  dplyr::arrange(pop_n)
+
+production_table <- dplyr::group_by(production_wide, part, nutrients_pool, pop_n) %>% 
+  dplyr::summarise(value.rand = mean(value.rand), 
+                   value.attr = mean(value.attr), .groups = "drop") %>% 
+  tidyr::separate(col = part, into = c("part", "measure"), sep = "_") %>% 
+  dplyr::mutate(pop_n = factor(pop_n, ordered = TRUE), 
+                nutrients_pool = factor(nutrients_pool, ordered = TRUE)) %>% 
+  dplyr::left_join(response_ratios, by = c("part", "measure", "pop_n", "nutrients_pool")) %>% 
+  dplyr::select(part, measure, nutrients_pool, pop_n, value.rand, value.attr, mean, ci) %>% 
+  dplyr::arrange(pop_n)
+
 #### Setup ggplots ####
 
 # print 2 digits on y-axsis
@@ -162,7 +185,7 @@ lab_part <- as_labeller(c("ag" = "Aboveground value", "bg" = "Belowground value"
 # # get absolute largest values
 # limits_fish <- dplyr::filter(response_ratios, nutrients_pool == 0.75) %>%
 #   dplyr::group_by(part) %>%
-#   dplyr::summarise(l = max(abs(c(mean - se, mean + se))))
+#   dplyr::summarise(l = max(abs(c(mean - ci, mean + ci))))
 
 gg_fish_ag <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "ag") %>%
   ggplot() +
@@ -170,7 +193,7 @@ gg_fish_ag <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "ag
   geom_line(aes(x = pop_n, y = mean, group = measure),
             col = "lightgrey", position = pd) +
   geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = pop_n, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = pop_n, ymin = mean - ci, ymax = mean + ci,
                      col = measure, group = measure),
                  position = pd) +
   facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
@@ -190,7 +213,7 @@ gg_fish_bg <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "bg
   geom_line(aes(x = pop_n, y = mean, group = measure),
             col = "lightgrey", position = pd) +
   geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = pop_n, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = pop_n, ymin = mean - ci, ymax = mean + ci,
                      col = measure, group = measure),
                  position = pd, size = 0.5) +
   facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
@@ -210,7 +233,7 @@ gg_fish_ttl <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "t
   geom_line(aes(x = pop_n, y = mean, group = measure),
             col = "lightgrey", position = pd) +
   geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = pop_n, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = pop_n, ymin = mean - ci, ymax = mean + ci,
                      col = measure, group = measure),
                  position = pd, size = 0.5) +
   facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
@@ -244,14 +267,14 @@ lab_pop_n <- as_labeller(c(`1` = "1 individuals", `2` = "2 individuals",
 
 # # get absolute largest values
 # limits_full <- dplyr::group_by(response_ratios, part) %>% 
-#   dplyr::summarise(lim = max(abs(c(mean - se, mean + se))))
+#   dplyr::summarise(lim = max(abs(c(mean - ci, mean + ci))))
 
 gg_full_ag_a <- ggplot(data = filter(response_ratios, part == "ag", pop_n %in% c(1, 2, 4))) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
   geom_line(aes(x = nutrients_pool, y = mean, group = measure), col = "lightgrey",
             position = pd) +
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = nutrients_pool, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = nutrients_pool, ymin = mean - ci, ymax = mean + ci,
                      col = measure, group = measure), position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
@@ -268,7 +291,7 @@ gg_full_ag_b <- ggplot(data = filter(response_ratios, part == "ag", pop_n %in% c
   geom_line(aes(x = nutrients_pool, y = mean, group = measure), col = "lightgrey",
             position = pd) +
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = nutrients_pool, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = nutrients_pool, ymin = mean - ci, ymax = mean + ci,
                      col = measure, group = measure), position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
@@ -285,7 +308,7 @@ gg_full_bg_a <- ggplot(data = filter(response_ratios, part == "bg", pop_n %in% c
   geom_line(aes(x = nutrients_pool, y = mean, group = measure), col = "lightgrey",
             position = pd) +
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = nutrients_pool, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = nutrients_pool, ymin = mean - ci, ymax = mean + ci,
                      col = measure, group = measure), position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
@@ -302,7 +325,7 @@ gg_full_bg_b <- ggplot(data = filter(response_ratios, part == "bg", pop_n %in% c
   geom_line(aes(x = nutrients_pool, y = mean, group = measure), col = "lightgrey",
             position = pd) +
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = nutrients_pool, ymin = mean - se, ymax = mean + se,
+  geom_linerange(aes(x = nutrients_pool, ymin = mean - ci, ymax = mean + ci,
                      col = measure, group = measure), position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
@@ -319,7 +342,7 @@ gg_full_ttl_a <- ggplot(data = filter(response_ratios, part == "ttl", pop_n %in%
   geom_line(aes(x = nutrients_pool, y = mean, group = measure), col = "lightgrey",
             position = pd) +
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = nutrients_pool, ymin = mean - se, ymax = mean + se, 
+  geom_linerange(aes(x = nutrients_pool, ymin = mean - ci, ymax = mean + ci, 
                      col = measure, group = measure), position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
@@ -336,7 +359,7 @@ gg_full_ttl_b <- ggplot(data = filter(response_ratios, part == "ttl", pop_n %in%
   geom_line(aes(x = nutrients_pool, y = mean, group = measure), col = "lightgrey",
             position = pd) +
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = nutrients_pool, ymin = mean - se, ymax = mean + se, 
+  geom_linerange(aes(x = nutrients_pool, ymin = mean - ci, ymax = mean + ci, 
                      col = measure, group = measure), position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
