@@ -1,5 +1,5 @@
 ---
-title: "Production value"
+title: ""
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(kableExtra)
 ```
 
-**Purpose**: Calculate production per sqm and day for both movement treatments (*rand* vs. *attr*) and all treatment levels.
+**Purpose**: Calculate production per m2/day and standing biomass per m2 for whole simulation time for both movement treatments (*rand* vs. *attr*) and all treatment levels.
 
 ```{r load_data, message = FALSE}
 # load packages #
@@ -21,57 +21,75 @@ source(here::here("01_Helper_functions/calc_seagrass_values.R"))
 sim_experiment <- readr::read_rds(here::here("02_Data/02_Modified/03_run_model/sim_experiment.rds"))
 
 model_runs <- readr::read_rds(here::here("02_Data/02_Modified/03_run_model/model_runs.rds"))
-```
 
-This calculates the total production of all treatments levels (including repetitions). I took the mean of repetitions with the same treatment levels and divided the value by 100 x 100 cells and 50 years x 365 days to get production per sqm per day.
-
-```{r calc_prod}
 # add row id to sim_experiment
 sim_experiment <- dplyr::mutate(sim_experiment, 
                                 id = as.character(1:nrow(sim_experiment)), 
                                 .before = "nutrients_pool")
+```
 
-# calculate total production rand/attr
-rand_full <- purrr::map_dfr(model_runs, function(i) 
+For production to sum of all cells is divided by 100 x 100 cells and 50 years x 365 days, for standing biomass the sum of all cells is divided by 100 x 100 cells.
+
+All values are the mean of all repetitions for the corresponding treatment level.
+
+```{r calc_results}
+# random movement # 
+rand_prod <- purrr::map_dfr(model_runs, function(i) 
   magrittr::extract2(i, "rand") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_production(norm = FALSE), .id = "id") %>% 
-  dplyr::left_join(sim_experiment, by = "id")
+    dplyr::filter(timestep == max(timestep), reef == 0) %>% 
+    dplyr::mutate(class_dist = cut(reef_dist, breaks = c(0, 10, 20, max(reef_dist)),
+                                   ordered_result = TRUE)) %>% 
+    dplyr::select(class_dist, ag_production, bg_production) %>% 
+    tidyr::pivot_longer(cols = c(ag_production, bg_production), 
+                        names_to = "part", values_to = "value") %>% 
+    dplyr::group_by(class_dist, part) %>% 
+    dplyr::summarise(value = mean(value), .groups = "drop"),
+  .id = "id") %>% 
+  dplyr::mutate(value = value / (50 * 365)) %>% 
+  dplyr::left_join(sim_experiment, by = "id") %>% 
+  dplyr::group_by(class_dist, part, nutrients_pool, pop_n) %>% 
+  dplyr::summarise(value = mean(value), .groups = "drop") %>% 
+  tidyr::pivot_wider(names_from = class_dist, values_from = value) %>% 
+  dplyr::arrange(nutrients_pool, pop_n)
 
-rand_treatment <- dplyr::group_by(rand_full, part, nutrients_pool, pop_n) %>% 
-  dplyr::summarise(prod_mean = mean(value), .groups = "drop") %>% 
-  dplyr::mutate(prod_sqm_day = prod_mean / (100 * 100) / (50 * 365)) %>% 
-  dplyr::arrange(nutrients_pool, pop_n) %>% 
-  dplyr::select(-prod_mean)
-
-attr_full <- purrr::map_dfr(model_runs, function(i) 
+# attracted movement # 
+attr_prod <- purrr::map_dfr(model_runs, function(i) 
   magrittr::extract2(i, "attr") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_production(norm = FALSE), .id = "id") %>% 
-  dplyr::left_join(sim_experiment, by = "id")
-
-attr_treatment <- dplyr::group_by(attr_full, part, nutrients_pool, pop_n) %>% 
-  dplyr::summarise(prod_mean = mean(value), .groups = "drop") %>% 
-  dplyr::mutate(prod_sqm_day = prod_mean / (100 * 100) / (50 * 365)) %>% 
-  dplyr::arrange(nutrients_pool, pop_n) %>% 
-  dplyr::select(-prod_mean)
+    dplyr::filter(timestep == max(timestep), reef == 0) %>% 
+    dplyr::mutate(class_dist = cut(reef_dist, breaks = c(0, 10, 20, max(reef_dist)),
+                                   ordered_result = TRUE)) %>% 
+    dplyr::select(class_dist, ag_production, bg_production) %>% 
+    tidyr::pivot_longer(cols = c(ag_production, bg_production), 
+                        names_to = "part", values_to = "value") %>% 
+    dplyr::group_by(class_dist, part) %>% 
+    dplyr::summarise(value = mean(value), .groups = "drop"),
+  .id = "id") %>% 
+  dplyr::mutate(value = value / (50 * 365)) %>% 
+  dplyr::left_join(sim_experiment, by = "id") %>% 
+  dplyr::group_by(class_dist, part, nutrients_pool, pop_n) %>% 
+  dplyr::summarise(value = mean(value), .groups = "drop") %>% 
+  tidyr::pivot_wider(names_from = class_dist, values_from = value) %>% 
+  dplyr::arrange(nutrients_pool, pop_n)
 ```
 
 Here are the results for *ag* and *bg* separated by movement type and treatment levels. You should be able to scroll down within the tables to see all values.
 
-```{r results_rand, echo = FALSE}
-knitr::kable(rand_treatment, caption = "Random movement") %>% 
+```{r results_rand_prod, echo = FALSE}
+knitr::kable(rand_prod, caption = "Random movement production") %>% 
   kableExtra::kable_styling() %>% 
-  kableExtra::scroll_box(height = "350px")
-
+  kableExtra::scroll_box(height = "500px")
 ```
 
 <br>
 <br>
 
-```{r results_attr, echo = FALSE}
-knitr::kable(attr_treatment, caption = "Attracted movement") %>% 
+```{r results_attr_prod, echo = FALSE}
+knitr::kable(attr_prod, caption = "Attracted movement production") %>% 
   kableExtra::kable_styling() %>% 
-  kableExtra::scroll_box(height = "350px")
+  kableExtra::scroll_box(height = "500px")
 ```
 
+<br>
+<br>
