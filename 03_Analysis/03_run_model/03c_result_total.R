@@ -164,14 +164,14 @@ complete_table <- dplyr::left_join(x = biomass_table, y = production_table,
                                    suffix = c(".biom", ".prod")) %>% 
   dplyr::mutate(rr_ag.biom = dplyr::case_when(lo_ag.biom < 0 & hi_ag.biom < 0 ~ "rand", 
                                               lo_ag.biom > 0 & hi_ag.biom > 0 ~ "attr",
-                                              TRUE ~ "n.s.")) %>% 
-  dplyr::mutate(rr_ag.prod = dplyr::case_when(lo_ag.prod < 0 & hi_ag.prod < 0 ~ "rand", 
+                                              TRUE ~ "n.s."), 
+                rr_ag.prod = dplyr::case_when(lo_ag.prod < 0 & hi_ag.prod < 0 ~ "rand", 
                                               lo_ag.prod > 0 & hi_ag.prod > 0 ~ "attr",
-                                              TRUE ~ "n.s.")) %>% 
-  dplyr::mutate(rr_bg.biom = dplyr::case_when(lo_bg.biom < 0 & hi_bg.biom < 0 ~ "rand", 
+                                              TRUE ~ "n.s."), 
+                rr_bg.biom = dplyr::case_when(lo_bg.biom < 0 & hi_bg.biom < 0 ~ "rand", 
                                               lo_bg.biom > 0 & hi_bg.biom > 0 ~ "attr",
-                                              TRUE ~ "n.s.")) %>% 
-  dplyr::mutate(rr_bg.prod = dplyr::case_when(lo_bg.prod < 0 & hi_bg.prod < 0 ~ "rand", 
+                                              TRUE ~ "n.s."),
+                rr_bg.prod = dplyr::case_when(lo_bg.prod < 0 & hi_bg.prod < 0 ~ "rand", 
                                               lo_bg.prod > 0 & hi_bg.prod > 0 ~ "attr",
                                               TRUE ~ "n.s.")) %>% 
   dplyr::select(pop_n, nutrients_pool, 
@@ -185,7 +185,6 @@ complete_table <- dplyr::left_join(x = biomass_table, y = production_table,
 readr::write_delim(complete_table, file = "02_Data/02_Modified/03_run_model/complete_table.csv",
                    delim = ";")
 
-
 complete_table_rr <- dplyr::left_join(x = biomass_table, y = production_table, 
                                       by = c("pop_n", "nutrients_pool"), 
                                       suffix = c(".biom", ".prod")) %>% 
@@ -198,6 +197,17 @@ complete_table_rr <- dplyr::left_join(x = biomass_table, y = production_table,
   dplyr::arrange(pop_n)
 
 readr::write_delim(complete_table_rr, file = "02_Data/02_Modified/03_run_model/complete_table_rr.csv",
+                   delim = ";")
+
+complete_table_rel <- dplyr::mutate(complete_table, 
+                                    biom_ag_rel = (value.attr_ag.biom - value.rand_ag.biom)  / value.rand_ag.biom * 100,
+                                    biom_bg_rel = (value.attr_bg.biom - value.rand_bg.biom)  / value.rand_bg.biom * 100, 
+                                    prod_ag_rel = (value.attr_ag.prod - value.rand_ag.prod)  / value.rand_ag.prod * 100,
+                                    prod_bg_rel = (value.attr_bg.prod - value.rand_bg.prod)  / value.rand_bg.prod * 100) %>% 
+  dplyr::select(pop_n, nutrients_pool, biom_ag_rel, prod_ag_rel, biom_bg_rel, prod_bg_rel) %>% 
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("biom_", "prod_"))), formatC, digits = 2, format = "e")
+
+readr::write_delim(complete_table_rel, file = "02_Data/02_Modified/03_run_model/complete_table_rel.csv",
                    delim = ";")
 
 #### Setup ggplots ####
