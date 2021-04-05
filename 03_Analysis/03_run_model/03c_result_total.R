@@ -210,6 +210,27 @@ complete_table_rel <- dplyr::mutate(complete_table,
 readr::write_delim(complete_table_rel, file = "02_Data/02_Modified/03_run_model/complete_table_rel.csv",
                    delim = ";")
 
+complete_table_rel_dist <- purrr::map_dfr(model_runs, calc_rel_diff_dist, 
+                                          breaks = c(0, 5, 27.5, 32.5), .id = "id") %>% 
+  dplyr::filter(class_dist %in% c("(0,5]", "(27.5,32.5]")) %>% 
+  dplyr::mutate(class_dist = factor(class_dist, labels = c("5", "30"))) %>% 
+  dplyr::left_join(sim_experiment, by = "id") %>%
+  dplyr::group_by(class_dist, name, nutrients_pool, pop_n) %>% 
+  dplyr::summarise(value = mean(value), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = c(name, class_dist), values_from = value) %>% 
+  dplyr::arrange(pop_n, nutrients_pool) %>% 
+  dplyr::select(pop_n, nutrients_pool,
+                ag_biomass_5, ag_biomass_30, 
+                ag_production_5, ag_production_30, 
+                bg_biomass_5, bg_biomass_30, 
+                bg_production_5, bg_production_30) %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))),
+                   formatC, digits = 2, format = "e")
+
+readr::write_delim(complete_table_rel_dist, 
+                   file = "02_Data/02_Modified/03_run_model/complete_table_rel_dist.csv",
+                   delim = ";")
+
 #### Setup ggplots ####
 
 # print 2 digits on y-axsis

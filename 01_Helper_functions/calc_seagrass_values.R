@@ -143,3 +143,27 @@ log_response <- function(data, indices) {
   
   return(f)
 } 
+
+calc_rel_diff_dist <- function(x, breaks) {
+  
+  rand <- magrittr::extract2(x, "rand") %>%
+    magrittr::extract2("seafloor")
+  
+  attr <- magrittr::extract2(x, "attr") %>%
+    magrittr::extract2("seafloor")
+  
+  total <- dplyr::bind_rows(rand = rand, attr = attr, .id = "type") %>% 
+    dplyr::filter(timestep == max(timestep), reef == 0) %>% 
+    dplyr::select(type, reef_dist, ag_biomass, ag_production, bg_biomass, bg_production) %>% 
+    tidyr::pivot_longer(-c(type, reef_dist)) %>% 
+    dplyr::mutate(class_dist = cut(reef_dist, breaks = breaks, 
+                                   right = TRUE, ordered_result = TRUE)) %>%
+    dplyr::filter(!is.na(class_dist)) %>% 
+    dplyr::group_by(type, class_dist, name) %>% 
+    dplyr::summarise(value = mean(value), .groups = "drop") %>% 
+    tidyr::pivot_wider(names_from = type, values_from = value) %>% 
+    dplyr::mutate(value = (attr - rand) / rand * 100) %>% 
+    dplyr::select(-c(rand, attr))
+
+return(total)
+}
