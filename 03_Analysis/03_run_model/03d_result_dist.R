@@ -127,23 +127,29 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide,
 
 #### Table ####
 
+foo_a <- function(x) {
+  
+  ifelse(floor(log10(abs(x))) + 1 > 6 | floor(log10(abs(x))) + 1 < -6, 
+         yes = formatC(x, digits = 2, format = "e"), no = x)
+  
+  
+}
+
 complete_table_rel_dist <- purrr::map_dfr(model_runs, calc_rel_diff_dist, 
-                                          breaks = c(0, 1, 2, 3, 4, 5, 27.5, 32.5), .id = "id") %>% 
-  dplyr::filter(class_dist != "(5,27.5]") %>% 
-  dplyr::mutate(class_dist = factor(class_dist, labels = c("1", "2", "3", "4", "5", "30"))) %>% 
+                                          breaks = c(0, 3, 27.5, 32.5), .id = "id") %>% 
+  dplyr::filter(class_dist %in% c("(0,3]", "(27.5,32.5]")) %>% 
+  dplyr::mutate(class_dist = factor(class_dist, labels = c("3", "30"))) %>% 
   dplyr::left_join(experiment, by = "id") %>%
   dplyr::group_by(class_dist, name, nutrients_pool, pop_n) %>% 
   dplyr::summarise(value = mean(value), .groups = "drop") %>%
   tidyr::pivot_wider(names_from = c(name, class_dist), values_from = value) %>% 
-  dplyr::arrange(pop_n, nutrients_pool) # %>% 
-  # dplyr::select(pop_n, nutrients_pool,
-  #               ag_biomass_5, ag_biomass_30, 
-  #               ag_production_5, ag_production_30, 
-  #               bg_biomass_5, bg_biomass_30, 
-  #               bg_production_5, bg_production_30) %>%
-  # dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))),
-  #                  formatC, digits = 2, format = "e")
-
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))), round, digits = 3) %>%
+  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))), foo_a) %>%
+  dplyr::arrange(pop_n, nutrients_pool) %>% 
+  dplyr::select(pop_n, nutrients_pool, 
+                ag_biomass_3, ag_biomass_30, ag_production_3, ag_production_30, 
+                bg_biomass_3, bg_biomass_30, bg_production_3, bg_production_30)
+  
 readr::write_delim(complete_table_rel_dist, 
                    file = "02_Data/02_Modified/03_run_model/complete_table_rel_dist.csv",
                    delim = ";")

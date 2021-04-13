@@ -159,10 +159,21 @@ production_table <- dplyr::group_by(production_wide, part, nutrients_pool, pop_n
   dplyr::select(pop_n, nutrients_pool, part, value.rand, value.attr, lo, mean, hi) %>% 
   tidyr::pivot_wider(names_from = part, values_from = c(value.rand, value.attr, lo, mean, hi))
 
+
+foo_a <- function(x) ifelse(x < 0.01 & x > 0, yes = 999, no = x)
+foo_b <- function(x) ifelse(x > -0.01 & x < 0, yes = -999, no = x)
+
+foo_c <- function(x) ifelse(x == "999", yes = "<0.01", no = x)
+foo_d <- function(x) ifelse(x == "-999", yes = ">-0.01", no = x)
+
 complete_table <- dplyr::left_join(x = biomass_table, y = production_table, 
                                    by = c("pop_n", "nutrients_pool"), 
                                    suffix = c(".biom", ".prod")) %>% 
-  dplyr::mutate(rr_ag.biom = dplyr::case_when(lo_ag.biom < 0 & hi_ag.biom < 0 ~ "rand", 
+  dplyr::mutate(value_ag_biom_rel = (value.attr_ag.biom - value.rand_ag.biom) / value.rand_ag.biom * 100,
+                value_bg_biom_rel = (value.attr_bg.biom - value.rand_bg.biom) / value.rand_bg.biom * 100, 
+                value_ag_prod_rel = (value.attr_ag.prod - value.rand_ag.prod) / value.rand_ag.prod * 100,
+                value_bg_prod_rel = (value.attr_bg.prod - value.rand_bg.prod) / value.rand_bg.prod * 100, 
+                rr_ag.biom = dplyr::case_when(lo_ag.biom < 0 & hi_ag.biom < 0 ~ "rand", 
                                               lo_ag.biom > 0 & hi_ag.biom > 0 ~ "attr",
                                               TRUE ~ "n.s."), 
                 rr_ag.prod = dplyr::case_when(lo_ag.prod < 0 & hi_ag.prod < 0 ~ "rand", 
@@ -175,46 +186,51 @@ complete_table <- dplyr::left_join(x = biomass_table, y = production_table,
                                               lo_bg.prod > 0 & hi_bg.prod > 0 ~ "attr",
                                               TRUE ~ "n.s.")) %>% 
   dplyr::select(pop_n, nutrients_pool, 
-                value.rand_ag.biom, value.attr_ag.biom, rr_ag.biom,
-                value.rand_ag.prod, value.attr_ag.prod, rr_ag.prod,
-                value.rand_bg.biom, value.attr_bg.biom, rr_bg.biom, 
-                value.rand_bg.prod, value.attr_bg.prod, rr_bg.prod) %>%
-  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), round, digits = 1) %>%
+                value.rand_ag.biom, value.attr_ag.biom, value_ag_biom_rel, rr_ag.biom,
+                value.rand_ag.prod, value.attr_ag.prod, value_ag_prod_rel, rr_ag.prod,
+                value.rand_bg.biom, value.attr_bg.biom, value_bg_biom_rel, rr_bg.biom, 
+                value.rand_bg.prod, value.attr_bg.prod, value_bg_prod_rel, rr_bg.prod) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_a) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_b) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), round, digits = 2) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), as.character) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_c) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_d) %>%
   dplyr::arrange(pop_n)
 
 readr::write_delim(complete_table, file = "02_Data/02_Modified/03_run_model/complete_table.csv",
                    delim = ";")
 
-complete_table_rr <- dplyr::left_join(x = biomass_table, y = production_table, 
-                                      by = c("pop_n", "nutrients_pool"), 
-                                      suffix = c(".biom", ".prod")) %>% 
-  dplyr::select(pop_n, nutrients_pool, 
-                lo_ag.biom, mean_ag.biom, hi_ag.biom,
-                lo_ag.prod, mean_ag.prod, hi_ag.prod,
-                lo_bg.biom, mean_bg.biom, hi_bg.biom,
-                lo_bg.prod, mean_bg.prod, hi_bg.prod) %>% 
-  dplyr::mutate_at(dplyr::vars(-dplyr::all_of(c("pop_n", "nutrients_pool"))), formatC, digits = 2, format = "e") %>%
-  dplyr::arrange(pop_n)
-
-readr::write_delim(complete_table_rr, file = "02_Data/02_Modified/03_run_model/complete_table_rr.csv",
-                   delim = ";")
-
-complete_table_rel <- dplyr::mutate(complete_table, 
-                                    biom_ag_rel = (value.attr_ag.biom - value.rand_ag.biom) / value.rand_ag.biom * 100,
-                                    biom_bg_rel = (value.attr_bg.biom - value.rand_bg.biom) / value.rand_bg.biom * 100, 
-                                    prod_ag_rel = (value.attr_ag.prod - value.rand_ag.prod) / value.rand_ag.prod * 100,
-                                    prod_bg_rel = (value.attr_bg.prod - value.rand_bg.prod) / value.rand_bg.prod * 100, 
-                                    biom_ttl_rel = ((value.attr_ag.biom + value.attr_bg.biom) - 
-                                                      (value.rand_ag.biom + value.rand_bg.biom)) / 
-                                                      (value.rand_ag.biom + value.rand_bg.biom) * 100,
-                                    prod_ttl_rel = ((value.attr_ag.prod + value.attr_bg.prod) - 
-                                                      (value.rand_ag.prod + value.rand_bg.prod)) / 
-                                      (value.rand_ag.prod + value.rand_bg.prod) * 100) %>% 
-  dplyr::select(pop_n, nutrients_pool, biom_ag_rel, prod_ag_rel, biom_bg_rel, prod_bg_rel, biom_ttl_rel, prod_ttl_rel) %>% 
-  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("biom_", "prod_"))), formatC, digits = 2, format = "e")
-
-readr::write_delim(complete_table_rel, file = "02_Data/02_Modified/03_run_model/complete_table_rel.csv",
-                   delim = ";")
+# complete_table_rr <- dplyr::left_join(x = biomass_table, y = production_table, 
+#                                       by = c("pop_n", "nutrients_pool"), 
+#                                       suffix = c(".biom", ".prod")) %>% 
+#   dplyr::select(pop_n, nutrients_pool, 
+#                 lo_ag.biom, mean_ag.biom, hi_ag.biom,
+#                 lo_ag.prod, mean_ag.prod, hi_ag.prod,
+#                 lo_bg.biom, mean_bg.biom, hi_bg.biom,
+#                 lo_bg.prod, mean_bg.prod, hi_bg.prod) %>% 
+#   dplyr::mutate_at(dplyr::vars(-dplyr::all_of(c("pop_n", "nutrients_pool"))), formatC, digits = 2, format = "e") %>%
+#   dplyr::arrange(pop_n)
+# 
+# readr::write_delim(complete_table_rr, file = "02_Data/02_Modified/03_run_model/complete_table_rr.csv",
+#                    delim = ";")
+# 
+# complete_table_rel <- dplyr::mutate(complete_table, 
+#                                     biom_ag_rel = (value.attr_ag.biom - value.rand_ag.biom) / value.rand_ag.biom * 100,
+#                                     biom_bg_rel = (value.attr_bg.biom - value.rand_bg.biom) / value.rand_bg.biom * 100, 
+#                                     prod_ag_rel = (value.attr_ag.prod - value.rand_ag.prod) / value.rand_ag.prod * 100,
+#                                     prod_bg_rel = (value.attr_bg.prod - value.rand_bg.prod) / value.rand_bg.prod * 100, 
+#                                     biom_ttl_rel = ((value.attr_ag.biom + value.attr_bg.biom) - 
+#                                                       (value.rand_ag.biom + value.rand_bg.biom)) / 
+#                                                       (value.rand_ag.biom + value.rand_bg.biom) * 100,
+#                                     prod_ttl_rel = ((value.attr_ag.prod + value.attr_bg.prod) - 
+#                                                       (value.rand_ag.prod + value.rand_bg.prod)) / 
+#                                       (value.rand_ag.prod + value.rand_bg.prod) * 100) %>% 
+#   dplyr::select(pop_n, nutrients_pool, biom_ag_rel, prod_ag_rel, biom_bg_rel, prod_bg_rel, biom_ttl_rel, prod_ttl_rel) %>% 
+#   dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("biom_", "prod_"))), formatC, digits = 2, format = "e")
+# 
+# readr::write_delim(complete_table_rel, file = "02_Data/02_Modified/03_run_model/complete_table_rel.csv",
+#                    delim = ";")
 
 #### Setup ggplots ####
 
@@ -311,16 +327,32 @@ shape <- 20
 
 ##### Full design ####
 
-complete_table_text <- dplyr::filter(complete_table_rel, nutrients_pool == 0.75) %>% 
+complete_table_text <- dplyr::filter(complete_table, nutrients_pool == 0.75) %>% 
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value.")), as.numeric) %>%
+  dplyr::mutate(value_ttl_biom_rel = ((value.attr_ag.biom + value.attr_bg.biom) - 
+                                        (value.rand_ag.biom + value.rand_bg.biom)) /
+                  (value.rand_ag.biom + value.rand_bg.biom) * 100, 
+                value_ttl_prod_rel = ((value.attr_ag.prod + value.attr_bg.prod) - 
+                                        (value.rand_ag.prod + value.rand_bg.prod)) /
+                  (value.rand_ag.prod + value.rand_bg.prod) * 100) %>% 
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_a) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_b) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), round, digits = 2) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), as.character) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_c) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_d) %>% 
+  dplyr::select(pop_n, nutrients_pool, 
+                value_ag_biom_rel, value_ag_prod_rel, 
+                value_bg_biom_rel, value_bg_prod_rel, 
+                value_ttl_biom_rel, value_ttl_prod_rel) %>% 
   tidyr::pivot_longer(-c(pop_n, nutrients_pool)) %>% 
-  tidyr::separate(name, sep = "_", into = c("measure", "part", "misc")) %>% 
+  tidyr::separate(name, sep = "_", into = c("misc_a", "part", "measure", "misc_b")) %>% 
   dplyr::mutate(measure = factor(dplyr::case_when(measure == "biom" ~ "biomass", 
                                            measure == "prod" ~ "production")),
                 part = factor(part),
                 part_n = paste(part, pop_n, sep = "_"),
                 part_n = factor(part_n), 
-                value = round(as.numeric(value), 3),
-                misc = NULL)
+                misc_a = NULL, misc_b = NULL)
 
 lab_part_n <- as_labeller(c("ag_1" = "Aboveground value", 
                             "ag_2" = "", "ag_4" = "", 
