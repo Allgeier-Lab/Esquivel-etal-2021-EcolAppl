@@ -87,7 +87,8 @@ calc_dist_biomass <- function(x, norm = FALSE, clss_width = 1) {
     dplyr::mutate(dist_clss = cut(reef_dist,
                                   breaks = seq(from = 0, 
                                                to = max(reef_dist) + clss_width, 
-                                               by = clss_width))) %>% 
+                                               by = clss_width), 
+                                  ordered_result = TRUE)) %>% 
     tidyr::pivot_longer(cols = c(ag_biomass, bg_biomass), 
                         names_to = "part", values_to = "biomass") %>% 
     dplyr::group_by(dist_clss, part) %>% 

@@ -200,44 +200,29 @@ readr::write_delim(complete_table_rr, file = "02_Data/02_Modified/03_run_model/c
                    delim = ";")
 
 complete_table_rel <- dplyr::mutate(complete_table, 
-                                    biom_ag_rel = (value.attr_ag.biom - value.rand_ag.biom)  / value.rand_ag.biom * 100,
-                                    biom_bg_rel = (value.attr_bg.biom - value.rand_bg.biom)  / value.rand_bg.biom * 100, 
-                                    prod_ag_rel = (value.attr_ag.prod - value.rand_ag.prod)  / value.rand_ag.prod * 100,
-                                    prod_bg_rel = (value.attr_bg.prod - value.rand_bg.prod)  / value.rand_bg.prod * 100) %>% 
-  dplyr::select(pop_n, nutrients_pool, biom_ag_rel, prod_ag_rel, biom_bg_rel, prod_bg_rel) %>% 
+                                    biom_ag_rel = (value.attr_ag.biom - value.rand_ag.biom) / value.rand_ag.biom * 100,
+                                    biom_bg_rel = (value.attr_bg.biom - value.rand_bg.biom) / value.rand_bg.biom * 100, 
+                                    prod_ag_rel = (value.attr_ag.prod - value.rand_ag.prod) / value.rand_ag.prod * 100,
+                                    prod_bg_rel = (value.attr_bg.prod - value.rand_bg.prod) / value.rand_bg.prod * 100, 
+                                    biom_ttl_rel = ((value.attr_ag.biom + value.attr_bg.biom) - 
+                                                      (value.rand_ag.biom + value.rand_bg.biom)) / 
+                                                      (value.rand_ag.biom + value.rand_bg.biom) * 100,
+                                    prod_ttl_rel = ((value.attr_ag.prod + value.attr_bg.prod) - 
+                                                      (value.rand_ag.prod + value.rand_bg.prod)) / 
+                                      (value.rand_ag.prod + value.rand_bg.prod) * 100) %>% 
+  dplyr::select(pop_n, nutrients_pool, biom_ag_rel, prod_ag_rel, biom_bg_rel, prod_bg_rel, biom_ttl_rel, prod_ttl_rel) %>% 
   dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("biom_", "prod_"))), formatC, digits = 2, format = "e")
 
 readr::write_delim(complete_table_rel, file = "02_Data/02_Modified/03_run_model/complete_table_rel.csv",
                    delim = ";")
 
-complete_table_rel_dist <- purrr::map_dfr(model_runs, calc_rel_diff_dist, 
-                                          breaks = c(0, 5, 27.5, 32.5), .id = "id") %>% 
-  dplyr::filter(class_dist %in% c("(0,5]", "(27.5,32.5]")) %>% 
-  dplyr::mutate(class_dist = factor(class_dist, labels = c("5", "30"))) %>% 
-  dplyr::left_join(sim_experiment, by = "id") %>%
-  dplyr::group_by(class_dist, name, nutrients_pool, pop_n) %>% 
-  dplyr::summarise(value = mean(value), .groups = "drop") %>%
-  tidyr::pivot_wider(names_from = c(name, class_dist), values_from = value) %>% 
-  dplyr::arrange(pop_n, nutrients_pool) %>% 
-  dplyr::select(pop_n, nutrients_pool,
-                ag_biomass_5, ag_biomass_30, 
-                ag_production_5, ag_production_30, 
-                bg_biomass_5, bg_biomass_30, 
-                bg_production_5, bg_production_30) %>%
-  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))),
-                   formatC, digits = 2, format = "e")
-
-readr::write_delim(complete_table_rel_dist, 
-                   file = "02_Data/02_Modified/03_run_model/complete_table_rel_dist.csv",
-                   delim = ";")
-
 #### Setup ggplots ####
 
 # print 2 digits on y-axsis
-scale_fun <- function(x) sprintf("%.2f", x)
+scale_fun <- function(x) sprintf("%.3f", x)
 
-# function to create 5 ticks on y axis
-breaks_fun <- function(x) seq(from = min(x), to = max(x), length.out = 5)
+# # function to create 5 ticks on y axis
+# breaks_fun <- function(x) seq(from = min(x), to = max(x), length.out = 5)
 
 # font size
 base_size <- 8
@@ -253,78 +238,89 @@ shape <- 20
 
 #### Increasing fish population, stable nutrients ####
 
-# create labeller for panels
-lab_part <- as_labeller(c("ag" = "Aboveground value", "bg" = "Belowground value",
-                          "ttl" = "Total value"))
-
-# # get absolute largest values
-# limits_fish <- dplyr::filter(response_ratios, nutrients_pool == 0.75) %>%
-#   dplyr::group_by(part) %>%
-#   dplyr::summarise(l = max(abs(c(lo, hi))))
-
-gg_fish_ag <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "ag") %>%
-  ggplot() +
-  geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
-  geom_line(aes(x = pop_n, y = mean, group = measure),
-            col = "lightgrey", position = pd) +
-  geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = pop_n, ymin = lo, ymax = hi,
-                     col = measure, group = measure),
-                 position = pd) +
-  facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
-             labeller = lab_part)  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
-  scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"),
-                     labels = c("Biomass", "Production")) +
-  guides(col = FALSE) +
-  labs(x = "", y = "") +
-  theme_classic(base_size = base_size) +
-  theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
-        strip.background = element_blank(), plot.margin = margin(mar))
-
-gg_fish_bg <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "bg") %>%
-  ggplot() +
-  geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
-  geom_line(aes(x = pop_n, y = mean, group = measure),
-            col = "lightgrey", position = pd) +
-  geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = pop_n, ymin = lo, ymax = hi,
-                     col = measure, group = measure),
-                 position = pd, size = 0.5) +
-  facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
-             labeller = lab_part)  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
-  scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"),
-                     labels = c("Biomass", "Production")) +
-  guides(col = FALSE) +
-  labs(x = "", y = "Log response ratios") +
-  theme_classic(base_size = base_size) +
-  theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
-        strip.background = element_blank(), plot.margin = margin(mar))
-
-gg_fish_ttl <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "ttl") %>%
-  ggplot() +
-  geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
-  geom_line(aes(x = pop_n, y = mean, group = measure),
-            col = "lightgrey", position = pd) +
-  geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
-  geom_linerange(aes(x = pop_n, ymin = lo, ymax = hi,
-                     col = measure, group = measure),
-                 position = pd, size = 0.5) +
-  facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
-             labeller = lab_part)  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
-  scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"),
-                     labels = c("Biomass", "Production")) +
-  labs(x = "Fish population size", y = "") +
-  theme_classic(base_size = base_size) +
-  theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
-        strip.background = element_blank(), plot.margin = margin(mar))
-
-gg_fish_design <- cowplot::plot_grid(gg_fish_ag, gg_fish_bg, gg_fish_ttl,
-                                     ncol = 1, nrow = 3)
+# # create labeller for panels
+# lab_part <- as_labeller(c("ag" = "Aboveground value", "bg" = "Belowground value",
+#                           "ttl" = "Total value"))
+# 
+# # # get absolute largest values
+# # limits_fish <- dplyr::filter(response_ratios, nutrients_pool == 0.75) %>%
+# #   dplyr::group_by(part) %>%
+# #   dplyr::summarise(l = max(abs(c(lo, hi))))
+# 
+# gg_fish_ag <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "ag") %>%
+#   ggplot() +
+#   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
+#   geom_line(aes(x = pop_n, y = mean, group = measure),
+#             col = "lightgrey", position = pd) +
+#   geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
+#   geom_linerange(aes(x = pop_n, ymin = lo, ymax = hi,
+#                      col = measure, group = measure),
+#                  position = pd) +
+#   facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
+#              labeller = lab_part)  + 
+#   scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+#   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"),
+#                      labels = c("Biomass", "Production")) +
+#   guides(col = FALSE) +
+#   labs(x = "", y = "") +
+#   theme_classic(base_size = base_size) +
+#   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
+#         strip.background = element_blank(), plot.margin = margin(mar))
+# 
+# gg_fish_bg <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "bg") %>%
+#   ggplot() +
+#   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
+#   geom_line(aes(x = pop_n, y = mean, group = measure),
+#             col = "lightgrey", position = pd) +
+#   geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
+#   geom_linerange(aes(x = pop_n, ymin = lo, ymax = hi,
+#                      col = measure, group = measure),
+#                  position = pd, size = 0.5) +
+#   facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
+#              labeller = lab_part)  + 
+#   scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+#   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"),
+#                      labels = c("Biomass", "Production")) +
+#   guides(col = FALSE) +
+#   labs(x = "", y = "Log response ratios") +
+#   theme_classic(base_size = base_size) +
+#   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
+#         strip.background = element_blank(), plot.margin = margin(mar))
+# 
+# gg_fish_ttl <- dplyr::filter(response_ratios, nutrients_pool == 0.75, part == "ttl") %>%
+#   ggplot() +
+#   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
+#   geom_line(aes(x = pop_n, y = mean, group = measure),
+#             col = "lightgrey", position = pd) +
+#   geom_point(aes(x = pop_n, y = mean, col = measure), shape = shape, position = pd) +
+#   geom_linerange(aes(x = pop_n, ymin = lo, ymax = hi,
+#                      col = measure, group = measure),
+#                  position = pd, size = 0.5) +
+#   facet_wrap(. ~ part, scales = "fixed", nrow = 1, ncol = 1, 
+#              labeller = lab_part)  + 
+#   scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+#   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"),
+#                      labels = c("Biomass", "Production")) +
+#   labs(x = "Fish population size", y = "") +
+#   theme_classic(base_size = base_size) +
+#   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
+#         strip.background = element_blank(), plot.margin = margin(mar))
+# 
+# gg_fish_design <- cowplot::plot_grid(gg_fish_ag, gg_fish_bg, gg_fish_ttl,
+#                                      ncol = 1, nrow = 3)
 
 ##### Full design ####
+
+complete_table_text <- dplyr::filter(complete_table_rel, nutrients_pool == 0.75) %>% 
+  tidyr::pivot_longer(-c(pop_n, nutrients_pool)) %>% 
+  tidyr::separate(name, sep = "_", into = c("measure", "part", "misc")) %>% 
+  dplyr::mutate(measure = factor(dplyr::case_when(measure == "biom" ~ "biomass", 
+                                           measure == "prod" ~ "production")),
+                part = factor(part),
+                part_n = paste(part, pop_n, sep = "_"),
+                part_n = factor(part_n), 
+                value = round(as.numeric(value), 3),
+                misc = NULL)
 
 lab_part_n <- as_labeller(c("ag_1" = "Aboveground value", 
                             "ag_2" = "", "ag_4" = "", 
@@ -340,6 +336,10 @@ lab_pop_n <- as_labeller(c(`1` = "1 individuals", `2` = "2 individuals",
                            `4` = "4 individuals", `8` = "8 individuals", 
                            `16` = "16 individuals", `32` = "32 individuals"))
 
+lab_pop_n_empty <- as_labeller(c(`1` = "", `2` = "", 
+                                 `4` = "", `8` = "", 
+                                 `16` = "", `32` = ""))
+
 # # get absolute largest values
 # limits_full <- dplyr::group_by(response_ratios, part) %>% 
 #   dplyr::summarise(lim = max(abs(c(lo, hi))))
@@ -351,15 +351,25 @@ gg_full_ag_a <- ggplot(data = filter(response_ratios, part == "ag", pop_n %in% c
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
   geom_linerange(aes(x = nutrients_pool, ymin = lo, ymax = hi,
                      col = measure, group = measure), position = pd) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
+  geom_text(data = dplyr::filter(complete_table_text, part == "ag", 
+                                 pop_n %in% c(1, 2, 4), 
+                                 measure == "biomass"), 
+            aes(x = 1.75, y = 0.4, label = paste0(value, "%")), col = "#46ACC8", size = 2) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "ag", 
+                                 pop_n %in% c(1, 2, 4), 
+                                 measure == "production"), 
+            aes(x = 3.5, y = 0.4, label = paste0(value, "%")), col = "#B40F20", size = 2) +
+  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.1, 0.4, length.out = 5), 
+                     limits = c(-0.1, 0.4)) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                      labels = c("Biomass", "Production")) +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar), 
+        axis.text.x = element_blank())
 
 gg_full_ag_b <- ggplot(data = filter(response_ratios, part == "ag", pop_n %in% c(8, 16, 32))) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
@@ -368,15 +378,25 @@ gg_full_ag_b <- ggplot(data = filter(response_ratios, part == "ag", pop_n %in% c
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
   geom_linerange(aes(x = nutrients_pool, ymin = lo, ymax = hi,
                      col = measure, group = measure), position = pd) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
+  geom_text(data = dplyr::filter(complete_table_text, part == "ag", 
+                                 pop_n %in% c(8, 16, 32), 
+                                 measure == "biomass"), 
+            aes(x = 1.75, y = 9, label = paste0(value, "%")), col = "#46ACC8", size = 2) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "ag", 
+                                 pop_n %in% c(8, 16, 32), 
+                                 measure == "production"), 
+            aes(x = 3.5, y = 9, label = paste0(value, "%")), col = "#B40F20", size = 2) +
+  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.5, 9, length.out = 5), 
+                     limits = c(-0.5, 9)) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                      labels = c("Biomass", "Production")) +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar), 
+        axis.text.x = element_blank())
 
 gg_full_bg_a <- ggplot(data = filter(response_ratios, part == "bg", pop_n %in% c(1, 2, 4))) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
@@ -385,15 +405,25 @@ gg_full_bg_a <- ggplot(data = filter(response_ratios, part == "bg", pop_n %in% c
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
   geom_linerange(aes(x = nutrients_pool, ymin = lo, ymax = hi,
                      col = measure, group = measure), position = pd) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "bg", 
+                                 pop_n %in% c(1, 2, 4), 
+                                 measure == "biomass"), 
+            aes(x = 1.75, y = 0.01, label = paste0(value, "%")), col = "#46ACC8", size = 2) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "bg", 
+                                 pop_n %in% c(1, 2, 4), 
+                                 measure == "production"), 
+            aes(x = 3.5, y = 0.01, label = paste0(value, "%")), col = "#B40F20", size = 2) +
+  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.005, 0.01, length.out = 5), 
+                     limits = c(-0.005, 0.01)) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                      labels = c("Biomass", "Production")) +
   labs(x = "", y = "Log response ratios") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar), 
+        axis.text.x = element_blank())
 
 gg_full_bg_b <- ggplot(data = filter(response_ratios, part == "bg", pop_n %in% c(8, 16, 32))) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
@@ -402,15 +432,25 @@ gg_full_bg_b <- ggplot(data = filter(response_ratios, part == "bg", pop_n %in% c
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
   geom_linerange(aes(x = nutrients_pool, ymin = lo, ymax = hi,
                      col = measure, group = measure), position = pd) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "bg", 
+                                 pop_n %in% c(8, 16, 32), 
+                                 measure == "biomass"), 
+            aes(x = 1.75, y = 0.1, label = paste0(value, "%")), col = "#46ACC8", size = 2) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "bg", 
+                                 pop_n %in% c(8, 16, 32), 
+                                 measure == "production"), 
+            aes(x = 3.5, y = 0.1, label = paste0(value, "%")), col = "#B40F20", size = 2) +
+  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.1, 0.1, length.out = 5), 
+                     limits = c(-0.1, 0.1)) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                      labels = c("Biomass", "Production")) +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar), 
+        axis.text.x = element_blank())
 
 gg_full_ttl_a <- ggplot(data = filter(response_ratios, part == "ttl", pop_n %in% c(1, 2, 4))) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
@@ -419,9 +459,18 @@ gg_full_ttl_a <- ggplot(data = filter(response_ratios, part == "ttl", pop_n %in%
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
   geom_linerange(aes(x = nutrients_pool, ymin = lo, ymax = hi, 
                      col = measure, group = measure), position = pd) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "ttl", 
+                                 pop_n %in% c(1, 2, 4), 
+                                 measure == "biomass"), 
+            aes(x = 1.75, y = 0.01, label = paste0(value, "%")), col = "#46ACC8", size = 2) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "ttl", 
+                                 pop_n %in% c(1, 2, 4), 
+                                 measure == "production"), 
+            aes(x = 3.5, y = 0.01, label = paste0(value, "%")), col = "#B40F20", size = 2) +
+  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.005, 0.01, length.out = 5), 
+                     limits = c(-0.005, 0.01)) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                      labels = c("Biomass", "Production")) +
   labs(x = "", y = "") + 
@@ -436,9 +485,18 @@ gg_full_ttl_b <- ggplot(data = filter(response_ratios, part == "ttl", pop_n %in%
   geom_point(aes(x = nutrients_pool, y = mean, col = measure), shape = shape, position = pd) +
   geom_linerange(aes(x = nutrients_pool, ymin = lo, ymax = hi, 
                      col = measure, group = measure), position = pd) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 3, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "ttl", 
+                                 pop_n %in% c(8, 16, 32), 
+                                 measure == "biomass"), 
+            aes(x = 1.75, y = 0.125, label = paste0(value, "%")), col = "#46ACC8", size = 2) +
+  geom_text(data = dplyr::filter(complete_table_text, part == "ttl", 
+                                 pop_n %in% c(8, 16, 32), 
+                                 measure == "production"), 
+            aes(x = 3.5, y = 0.125, label = paste0(value, "%")), col = "#B40F20", size = 2) +
+  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.1, 0.125, length.out = 5),
+                     limits = c(-0.1, 0.125)) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                      labels = c("Biomass", "Production")) +
   labs(x = "", y = "") + 
@@ -467,10 +525,10 @@ gg_full_design <- plot_grid(gg_full_design, legend,
 # set defaults for plotting
 overwrite <- FALSE
 
-suppoRt::save_ggplot(plot = gg_fish_design, filename = "gg_fish_design.pdf",
-                     path = "04_Figures/03_simulation_experiment/",
-                     width = width, height = height * 0.5, dpi = dpi, units = units,
-                     overwrite = overwrite)
+# suppoRt::save_ggplot(plot = gg_fish_design, filename = "gg_fish_design.pdf",
+#                      path = "04_Figures/03_simulation_experiment/",
+#                      width = width, height = height * 0.5, dpi = dpi, units = units,
+#                      overwrite = overwrite)
 
 suppoRt::save_ggplot(plot = gg_full_design, filename = "gg_full_design.pdf",
                      path = "04_Figures/03_simulation_experiment/",

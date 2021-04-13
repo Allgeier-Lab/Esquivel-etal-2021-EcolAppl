@@ -24,7 +24,7 @@ model_runs <- readr::read_rds("02_Data/02_Modified/03_run_model/model_runs.rds")
 
 #### Preprocess data #### 
 
-norm <- TRUE
+norm <- FALSE
 
 clss_width <- 5
 
@@ -124,10 +124,31 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide,
                 part_nutr = paste(part, nutrients_pool, sep = "_"),
                 part_nutr = factor(part_nutr, levels = stringr::str_sort(unique(part_nutr)))) 
 
-#### Setup ggplot ####
 
-# print 2 digits on y-axsis
-scale_fun <- function(x) sprintf("%.2f", x)
+#### Table ####
+
+complete_table_rel_dist <- purrr::map_dfr(model_runs, calc_rel_diff_dist, 
+                                          breaks = c(0, 1, 2, 3, 4, 5, 27.5, 32.5), .id = "id") %>% 
+  dplyr::filter(class_dist != "(5,27.5]") %>% 
+  dplyr::mutate(class_dist = factor(class_dist, labels = c("1", "2", "3", "4", "5", "30"))) %>% 
+  dplyr::left_join(experiment, by = "id") %>%
+  dplyr::group_by(class_dist, name, nutrients_pool, pop_n) %>% 
+  dplyr::summarise(value = mean(value), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = c(name, class_dist), values_from = value) %>% 
+  dplyr::arrange(pop_n, nutrients_pool) # %>% 
+  # dplyr::select(pop_n, nutrients_pool,
+  #               ag_biomass_5, ag_biomass_30, 
+  #               ag_production_5, ag_production_30, 
+  #               bg_biomass_5, bg_biomass_30, 
+  #               bg_production_5, bg_production_30) %>%
+  # dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))),
+  #                  formatC, digits = 2, format = "e")
+
+readr::write_delim(complete_table_rel_dist, 
+                   file = "02_Data/02_Modified/03_run_model/complete_table_rel_dist.csv",
+                   delim = ";")
+
+#### Setup ggplot ####
 
 # function to create 5 ticks on y axis
 breaks_fun <- function(x) seq(from = min(x), to = max(x), length.out = 5)
@@ -147,14 +168,13 @@ shape <- 20
 # create x labels
 labels_x <- seq(from = clss_width,
                 to = length(unique(response_ratios$dist_clss)) * clss_width, 
-                by = clss_width) %>% 
-  paste0("<", .)
+                by = clss_width)
 
-# print each labels
-n <- 2
-
-# replace every 2nd label
-labels_x[seq(n, length(labels_x), n)] <- ""
+# # print each labels
+# n <- 2
+# 
+# # replace every 2nd label
+# labels_x[seq(n, length(labels_x), n)] <- ""
 
 # set position dodge
 pd <- position_dodge(width = 0.25)
@@ -177,11 +197,18 @@ lab_pop_n <- as_labeller(c(`1` = "1 individuals", `2` = "2 individuals",
                            `4` = "4 individuals", `8` = "8 individuals", 
                            `16` = "16 individuals", `32` = "32 individuals"))
 
+lab_pop_n_emtpy <- as_labeller(c(`1` = "", `2` = "", 
+                                 `4` = "", `8` = "", 
+                                 `16` = "", `32` = ""))
+
 # # get absolute largest values
 # limits_full <- dplyr::group_by(response_ratios, part) %>% 
 #   dplyr::summarise(l = max(abs(c(lo, hi))))
 
 #### Full design production ####
+
+# print 2 digits on y-axsis
+scale_fun <- function(x) sprintf("%.2f", x)
 
 gg_full_ag_a_prod <- ggplot(data = filter(response_ratios, part == "ag", 
                                           measure == "production", 
@@ -197,14 +224,15 @@ gg_full_ag_a_prod <- ggplot(data = filter(response_ratios, part == "ag",
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.3, 0.8, length.out = 5), 
+                     limits = c(-0.3, 0.8)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_ag_b_prod <- ggplot(data = filter(response_ratios, part == "ag", 
                                           measure == "production", 
@@ -220,14 +248,15 @@ gg_full_ag_b_prod <- ggplot(data = filter(response_ratios, part == "ag",
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(-1.2, 13, length.out = 5), 
+                     limits = c(-1.2, 13)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_bg_a_prod <- ggplot(data = filter(response_ratios, part == "bg", 
                                           measure == "production", 
@@ -242,15 +271,16 @@ gg_full_bg_a_prod <- ggplot(data = filter(response_ratios, part == "bg",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.2, 1.1, length.out = 5), 
+                     limits = c(-0.2, 1.1)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "Log response ratios") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_bg_b_prod <- ggplot(data = filter(response_ratios, part == "bg", 
                                           measure == "production", 
@@ -265,15 +295,16 @@ gg_full_bg_b_prod <- ggplot(data = filter(response_ratios, part == "bg",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-1.05, 2.5, length.out = 5), 
+                     limits = c(-1.05, 2.5)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_ttl_a_prod <- ggplot(data = filter(response_ratios, part == "ttl", 
                                            measure == "production", 
@@ -288,15 +319,16 @@ gg_full_ttl_a_prod <- ggplot(data = filter(response_ratios, part == "ttl",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.2, 1.1, length.out = 5), 
+                     limits = c(-0.2, 1.1)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 gg_full_ttl_b_prod <- ggplot(data = filter(response_ratios, part == "ttl", 
                                            measure == "production", 
@@ -311,15 +343,16 @@ gg_full_ttl_b_prod <- ggplot(data = filter(response_ratios, part == "ttl",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-1.05, 2.75, length.out = 5), 
+                     limits = c(-1.05, 2.75)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 legend_prod <- get_legend(
   gg_full_ttl_b_prod
@@ -339,6 +372,8 @@ gg_full_design_prod <- plot_grid(gg_full_design_prod, legend_prod,
 
 #### Full design biomass ####
 
+scale_fun <- function(x) sprintf("%.4f", x)
+
 gg_full_ag_a_biom <- ggplot(data = filter(response_ratios, part == "ag", 
                                           measure == "biomass", 
                                           pop_n %in% c(1, 2, 4))) + 
@@ -353,14 +388,15 @@ gg_full_ag_a_biom <- ggplot(data = filter(response_ratios, part == "ag",
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.0005, 0.0015, length.out = 5), 
+                     limits = c(-0.0005, 0.0015)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_ag_b_biom <- ggplot(data = filter(response_ratios, part == "ag", 
                                           measure == "biomass", 
@@ -376,14 +412,15 @@ gg_full_ag_b_biom <- ggplot(data = filter(response_ratios, part == "ag",
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.2, 3.25, length.out = 5),
+                     limits = c(-0.2, 3.25)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_bg_a_biom <- ggplot(data = filter(response_ratios, part == "bg", 
                                           measure == "biomass", 
@@ -398,15 +435,16 @@ gg_full_bg_a_biom <- ggplot(data = filter(response_ratios, part == "bg",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.1, 0.35, length.out = 5),
+                     limits = c(-0.1, 0.35)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "Log response ratios") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_bg_b_biom <- ggplot(data = filter(response_ratios, part == "bg", 
                                           measure == "biomass", 
@@ -421,15 +459,16 @@ gg_full_bg_b_biom <- ggplot(data = filter(response_ratios, part == "bg",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.3, 0.9, length.out = 5),
+                     limits = c(-0.3, 0.9)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_blank())
 
 gg_full_ttl_a_biom <- ggplot(data = filter(response_ratios, part == "ttl", 
                                            measure == "biomass", 
@@ -444,15 +483,16 @@ gg_full_ttl_a_biom <- ggplot(data = filter(response_ratios, part == "ttl",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.05, 0.35, length.out = 5),
+                     limits = c(-0.05, 0.35)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 gg_full_ttl_b_biom <- ggplot(data = filter(response_ratios, part == "ttl", 
                                            measure == "biomass", 
@@ -467,15 +507,16 @@ gg_full_ttl_b_biom <- ggplot(data = filter(response_ratios, part == "ttl",
                      col = nutrients_pool, group = interaction(nutrients_pool, measure)), 
                  position = pd) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3,
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = breaks_fun) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_emtpy))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(-0.3, 1.1, length.out = 5),
+                     limits = c(-0.3, 1.1)) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting nutrient pool [g/cell]") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
-        axis.text.x = element_text(angle = 45, vjust = 0.5))
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 legend_biom <- get_legend(
   gg_full_ttl_b_biom
@@ -495,7 +536,7 @@ gg_full_design_biom <- plot_grid(gg_full_design_biom, legend_biom,
 
 ### Save ggplot ####
 
-overwrite <- TRUE
+overwrite <- T
 
 suppoRt::save_ggplot(plot = gg_full_design_prod, filename = "gg_full_design_dist_prod.pdf",
                      path = "04_Figures/03_simulation_experiment/",
