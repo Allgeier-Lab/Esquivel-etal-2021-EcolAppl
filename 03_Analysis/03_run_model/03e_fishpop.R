@@ -121,9 +121,9 @@ size_total <- dplyr::bind_rows(rand = size_rand, attr = size_attr,
 #### Setup ggplots ####
 
 # print 2 digits on y-axsis
-scale_fun_a <- function(x) sprintf("%.5f", x)
+scale_fun_a <- function(x) sprintf("%.4f", x)
 
-scale_fun_b <- function(x) sprintf("%.1f", x)
+scale_fun_b <- function(x) sprintf("%.0f", x)
 
 # function to create 5 ticks on y axis
 breaks_fun <- function(x) seq(from = 0, to = max(x), length.out = 5)
@@ -155,15 +155,16 @@ gg_total_size <- ggplot(data = size_total) +
                      col = movement, group = movement), position = pd, size = 0.5) +
   facet_wrap(. ~ pop_n, ncol = 6, labeller = lab_pop_n) + 
   guides(col = FALSE) +
-  scale_y_continuous(labels = scale_fun_a, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun_a, breaks = seq(0, 0.8, length.out = 5), 
+                     limits = c(0, 0.8)) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
-                    labels = c("No AR", "Attraction towards AR")) +
+                    labels = c("Random movement", "Attraction towards AR")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
   labs(x = "", y = "Mean fish biomass [g/sqm]") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "none", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), 
-        axis.line.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), 
+         axis.text.x = element_blank(),
         plot.margin = margin(mar))
 
 #### Create ggplot excretion ####
@@ -175,9 +176,10 @@ gg_total_excretion <- ggplot(data = excretion_total) +
                      col = movement, group = movement), position = pd, size = 0.5) +
   facet_wrap(. ~ pop_n, ncol = 6) + 
   guides(col = FALSE) +
-  scale_y_continuous(labels = scale_fun_b, breaks = breaks_fun) +
+  scale_y_continuous(labels = scale_fun_b, breaks = seq(0, 95000, length.out = 5), 
+                     limits = c(0, 95000)) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
-                    labels = c("No AR", "Attraction towards AR")) +
+                    labels = c("Random movement", "Attraction towards AR")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
   labs(x = "Starting nutrient pool [g/cell]", y = "Total fish excretion [g]") + 
   theme_classic(base_size = base_size) + 

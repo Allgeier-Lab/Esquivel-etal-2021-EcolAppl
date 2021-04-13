@@ -80,8 +80,12 @@ lab_name <- as_labeller(c("ag_biomass" = "Aboveground value",
 lab_measure <- as_labeller(c("biomass" = "Biomass", 
                           "production" = "Production"))
 
+lab_measure_empty <- as_labeller(c("biomass" = "", 
+                                   "production" = ""))
+
 # create ggplot
-ggplot_sobol <- ggplot(data = model_sobol_df) + 
+ggplot_sobol_ag_biom <- ggplot(data = dplyr::filter(model_sobol_df, 
+                                                    part == "ag", measure == "biomass")) +
   geom_hline(yintercept = 0, lty = 2, color = "lightgrey") + 
   geom_hline(yintercept = 0.5, lty = 2, color = "lightgrey") + 
   geom_hline(yintercept = 1, lty = 2, color = "lightgrey") + 
@@ -94,15 +98,92 @@ ggplot_sobol <- ggplot(data = model_sobol_df) +
   scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
                                            "Total effect" = "#ED7953FF")) +
   scale_y_continuous(name = "Effect strength", limits = c(0, 1)) +
-  scale_x_discrete(name = "Parameter") +
+  scale_x_discrete(name = "") +
+  theme_classic(base_size = base_size) +
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
+        strip.background = element_blank(), plot.margin = margin(mar),
+        axis.text.x = element_blank(), axis.title.x = element_blank())
+
+ggplot_sobol_ag_prod <- ggplot(data = dplyr::filter(model_sobol_df, 
+                                                    part == "ag", measure == "production")) +
+  geom_hline(yintercept = 0, lty = 2, color = "lightgrey") + 
+  geom_hline(yintercept = 0.5, lty = 2, color = "lightgrey") + 
+  geom_hline(yintercept = 1, lty = 2, color = "lightgrey") + 
+  geom_point(aes(x = parameter, y = value, col = effect),
+             size = 1.5, position = position_dodge(width = 0.5)) +
+  geom_linerange(aes(x  = parameter, ymin = min_ci, ymax = max_ci, col = effect),
+                 position = position_dodge(width = 0.5),size = 0.5) +
+  facet_wrap(. ~ name + measure, scales = "free", ncol = 2, nrow = 2, 
+             labeller = labeller(name = lab_name, measure = lab_measure)) +
+  scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
+                                           "Total effect" = "#ED7953FF")) +
+  scale_y_continuous(name = "", limits = c(0, 1)) +
+  scale_x_discrete(name = "") +
+  theme_classic(base_size = base_size) +
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
+        strip.background = element_blank(), plot.margin = margin(mar),
+        axis.text.x = element_blank(), axis.title.x = element_blank(), 
+        axis.text.y = element_blank())
+
+ggplot_sobol_bg_biom <- ggplot(data = dplyr::filter(model_sobol_df,
+                                                    part == "bg", measure == "biomass")) +
+  geom_hline(yintercept = 0, lty = 2, color = "lightgrey") + 
+  geom_hline(yintercept = 0.5, lty = 2, color = "lightgrey") + 
+  geom_hline(yintercept = 1, lty = 2, color = "lightgrey") + 
+  geom_point(aes(x = parameter, y = value, col = effect),
+             size = 1.5, position = position_dodge(width = 0.5)) +
+  geom_linerange(aes(x  = parameter, ymin = min_ci, ymax = max_ci, col = effect),
+                 position = position_dodge(width = 0.5),size = 0.5) +
+  facet_wrap(. ~ name + measure, scales = "free", ncol = 2, nrow = 2, 
+             labeller = labeller(name = lab_name, measure = lab_measure_empty)) +
+  scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
+                                           "Total effect" = "#ED7953FF")) +
+  scale_y_continuous(name = "Effect strength", limits = c(0, 1)) +
+  scale_x_discrete(name = "") +
   theme_classic(base_size = base_size) +
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar),
         axis.text.x = element_text(angle = 65, hjust = 1))
 
+ggplot_sobol_bg_prod <- ggplot(data = dplyr::filter(model_sobol_df, 
+                                                    part == "bg", measure == "production")) +
+  geom_hline(yintercept = 0, lty = 2, color = "lightgrey") + 
+  geom_hline(yintercept = 0.5, lty = 2, color = "lightgrey") + 
+  geom_hline(yintercept = 1, lty = 2, color = "lightgrey") + 
+  geom_point(aes(x = parameter, y = value, col = effect),
+             size = 1.5, position = position_dodge(width = 0.5)) +
+  geom_linerange(aes(x  = parameter, ymin = min_ci, ymax = max_ci, col = effect),
+                 position = position_dodge(width = 0.5),size = 0.5) +
+  facet_wrap(. ~ name + measure, scales = "free", ncol = 2, nrow = 2, 
+             labeller = labeller(name = lab_name, measure = lab_measure_empty)) +
+  scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
+                                           "Total effect" = "#ED7953FF")) +
+  scale_y_continuous(name = "", limits = c(0, 1)) +
+  scale_x_discrete(name = "") +
+  theme_classic(base_size = base_size) +
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
+        strip.background = element_blank(), plot.margin = margin(mar),
+        axis.text.x = element_text(angle = 65, hjust = 1), 
+        axis.text.y = element_blank())
+
+
+legend <- get_legend(
+  ggplot_sobol_ag_biom
+)
+
+ggplot_sobol <- cowplot::plot_grid(ggplot_sobol_ag_biom + theme(legend.position = "none"),
+                                   ggplot_sobol_ag_prod + theme(legend.position = "none"),
+                                   ggplot_sobol_bg_biom + theme(legend.position = "none"),
+                                   ggplot_sobol_bg_prod + theme(legend.position = "none"),
+                                   ncol = 2, nrow = 2, rel_heights = c(0.4, 0.6))
+
+ggplot_sobol_lgd <- plot_grid(ggplot_sobol, legend,
+                              ncol = 1, nrow = 2, rel_heights = c(1, 0.1)) + 
+  draw_label(label = "", y = 0.095, size = base_size)
+
 #### save result ####
 
-suppoRt::save_ggplot(plot = ggplot_sobol, 
+suppoRt::save_ggplot(plot = ggplot_sobol_lgd, 
                      filename = "ggplot_sa_sobol.pdf", 
                      path = "04_Figures/02_sensitivity_analysis/",     
                      width = width, height = height * 0.5, dpi = dpi, units = units,
