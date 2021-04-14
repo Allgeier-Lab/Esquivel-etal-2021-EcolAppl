@@ -124,15 +124,20 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide,
                 part_nutr = paste(part, nutrients_pool, sep = "_"),
                 part_nutr = factor(part_nutr, levels = stringr::str_sort(unique(part_nutr)))) 
 
-
 #### Table ####
 
-foo_a <- function(x) {
-  
-  ifelse(floor(log10(abs(x))) + 1 > 6 | floor(log10(abs(x))) + 1 < -6, 
+foo_a <- function(x) ifelse(x < 1 & x > 0, yes = 999, no = x)
+foo_b <- function(x) ifelse(x > -1 & x < 0, yes = -999, no = x)
+
+foo_c <- function(x) ifelse(x == "999", yes = "<1", no = x)
+foo_d <- function(x) ifelse(x == "-999", yes = ">-1", no = x)
+
+foo_e <- function(x) {
+
+  ifelse(floor(log10(abs(x))) + 1 > 6 | floor(log10(abs(x))) + 1 < -6,
          yes = formatC(x, digits = 2, format = "e"), no = x)
-  
-  
+
+
 }
 
 complete_table_rel_dist <- purrr::map_dfr(model_runs, calc_rel_diff_dist, 
@@ -143,8 +148,13 @@ complete_table_rel_dist <- purrr::map_dfr(model_runs, calc_rel_diff_dist,
   dplyr::group_by(class_dist, name, nutrients_pool, pop_n) %>% 
   dplyr::summarise(value = mean(value), .groups = "drop") %>%
   tidyr::pivot_wider(names_from = c(name, class_dist), values_from = value) %>% 
-  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))), round, digits = 3) %>%
-  dplyr::mutate_at(dplyr::vars(dplyr::starts_with(c("ag_", "bg_"))), foo_a) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with(c("ag_", "bg_"))), foo_a) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with(c("ag_", "bg_"))), foo_b) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with(c("ag_", "bg_"))), round, digits = 0) %>%
+  # dplyr::mutate_at(dplyr::vars(tidyr::starts_with(c("ag_", "bg_"))), foo_e) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with(c("ag_", "bg_"))), as.character) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with(c("ag_", "bg_"))), foo_c) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with(c("ag_", "bg_"))), foo_d) %>%
   dplyr::arrange(pop_n, nutrients_pool) %>% 
   dplyr::select(pop_n, nutrients_pool, 
                 ag_biomass_3, ag_biomass_30, ag_production_3, ag_production_30, 
@@ -542,7 +552,7 @@ gg_full_design_biom <- plot_grid(gg_full_design_biom, legend_biom,
 
 ### Save ggplot ####
 
-overwrite <- T
+overwrite <- FALSE
 
 suppoRt::save_ggplot(plot = gg_full_design_prod, filename = "gg_full_design_dist_prod.pdf",
                      path = "04_Figures/03_simulation_experiment/",

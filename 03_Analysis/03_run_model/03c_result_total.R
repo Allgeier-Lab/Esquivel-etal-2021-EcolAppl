@@ -160,11 +160,11 @@ production_table <- dplyr::group_by(production_wide, part, nutrients_pool, pop_n
   tidyr::pivot_wider(names_from = part, values_from = c(value.rand, value.attr, lo, mean, hi))
 
 
-foo_a <- function(x) ifelse(x < 0.01 & x > 0, yes = 999, no = x)
-foo_b <- function(x) ifelse(x > -0.01 & x < 0, yes = -999, no = x)
+foo_a <- function(x) ifelse(x < 1 & x > 0, yes = 999, no = x)
+foo_b <- function(x) ifelse(x > -1 & x < 0, yes = -999, no = x)
 
-foo_c <- function(x) ifelse(x == "999", yes = "<0.01", no = x)
-foo_d <- function(x) ifelse(x == "-999", yes = ">-0.01", no = x)
+foo_c <- function(x) ifelse(x == "999", yes = "<1", no = x)
+foo_d <- function(x) ifelse(x == "-999", yes = ">-1", no = x)
 
 complete_table <- dplyr::left_join(x = biomass_table, y = production_table, 
                                    by = c("pop_n", "nutrients_pool"), 
@@ -192,7 +192,7 @@ complete_table <- dplyr::left_join(x = biomass_table, y = production_table,
                 value.rand_bg.prod, value.attr_bg.prod, value_bg_prod_rel, rr_bg.prod) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_a) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_b) %>%
-  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), round, digits = 2) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), round, digits = 0) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), as.character) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_c) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value")), foo_d) %>%
@@ -337,7 +337,7 @@ complete_table_text <- dplyr::filter(complete_table, nutrients_pool == 0.75) %>%
                   (value.rand_ag.prod + value.rand_bg.prod) * 100) %>% 
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_a) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_b) %>%
-  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), round, digits = 2) %>%
+  dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), round, digits = 0) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), as.character) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_c) %>%
   dplyr::mutate_at(dplyr::vars(tidyr::starts_with("value_ttl")), foo_d) %>% 
