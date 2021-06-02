@@ -4,7 +4,7 @@
 .Ruserdata
 02_Data/01_Raw/
 02_Data/02_Modified/
-04_Figures/01_sensitvity_analysis/*.pdf
+04_Figures/01_sensitivity_analysis/*.pdf
 04_Figures/02_simulation_experiment/*.pdf
 04_Figures/03_various/*.pdf
 03_Analysis/04_various/*.html
