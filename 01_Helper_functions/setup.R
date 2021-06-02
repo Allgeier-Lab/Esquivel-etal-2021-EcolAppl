@@ -7,15 +7,15 @@
 ##--------------------------------------------##
 
 # load packages #
-library(arrR) # devtools::install_github("Allgeier-Lab/arrR", ref = "development")
+library(arrR) # remotes::install_github("Allgeier-Lab/arrR", ref = "development")
 library(boot)
 library(cowplot)
+library(ggnewscale)
 library(magrittr)
 library(progress)
 library(raster)
 library(sensitivity)
-library(suppoRt) # devtools::install_github("mhesselbarth/suppoRt")
-library(stringr)
+library(suppoRt) # remotes::install_github("mhesselbarth/suppoRt")
 library(tgp)
 library(tidyverse)
 
