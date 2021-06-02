@@ -1,0 +1,71 @@
+---
+title: ""
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DT)
+```
+
+```{r load_data, message = FALSE, warning = FALSE}
+# load packages #
+source(here::here("01_Helper_functions/setup.R"))
+
+source(here::here("01_Helper_functions/calc_seagrass_values.R"))
+
+model_runs <- readr::read_rds(here::here("02_Data/02_Modified/02_run_model/model-runs_14_15.rds"))
+
+sim_experiment <- readr::read_rds(here::here("02_Data/02_Modified/02_run_model/sim_experiment.rds")) %>% 
+  dplyr::mutate(id = 1:nrow(.))
+```
+
+```{r calc_prod}
+total_prod <- purrr::map_dfr(model_runs, function(i) {
+
+  time_scale <- i$rand$max_i * (i$rand$min_per_i / 60 / 24)
+
+  dplyr::bind_rows(rand = i$rand$seafloor, attr = i$attr$seafloor,
+                   .id = "move") %>% 
+    dplyr::filter(timestep == max(timestep), reef == 0) %>%
+    dplyr::mutate(ttl_production = ag_production + bg_production,
+                  dist = sqrt(x ^ 2 + y ^ 2),
+                  class_dist = cut(dist, breaks = c(0, 2, 5, 10, 70),
+                                   ordered_result = TRUE),
+                  class_dist = factor(class_dist, 
+                                      labels = paste0("dist_", c(2, 5, 10, 70)))) %>%
+    dplyr::select(move, class_dist, ag_production, bg_production, ttl_production) %>% 
+    tidyr::pivot_longer(cols = c(ag_production, bg_production, ttl_production),
+                        names_to = "part", values_to = "value") %>%
+    dplyr::group_by(move, class_dist, part) %>%
+    dplyr::summarise(value = mean(value) / time_scale, .groups = "drop")}, .id = "id") %>%
+  dplyr::mutate(id = as.integer(id)) %>%
+  dplyr::left_join(sim_experiment, by = "id") %>% 
+  dplyr::group_by(move, class_dist, part, starting_biomass, pop_n) %>% 
+  dplyr::summarise(value = mean(value), .groups = "drop") %>% 
+  tidyr::pivot_wider(names_from = class_dist, values_from = value)
+```
+
+<br>
+<br>
+
+```{r result_rand, echo = FALSE, eval = FALSE}
+dplyr::filter(total_prod, move == "rand") %>% 
+  dplyr::select(starting_biomass, pop_n, part, starts_with("dist")) %>% 
+  dplyr::arrange(starting_biomass, pop_n, part) %>% 
+  DT::datatable(caption = "Random movement: Mean production per sqm/day", 
+                options = list(pageLength = 30))
+```
+
+```{r result_attr, echo = FALSE}
+dplyr::filter(total_prod, move == "attr") %>% 
+  dplyr::select(starting_biomass, pop_n, part, starts_with("dist")) %>% 
+  dplyr::arrange(starting_biomass, pop_n, part) %>% 
+  DT::datatable(caption = "Attracted movement: Mean production per sqm/day", 
+                options = list(pageLength = 30))
+```
+
+<br>
+<br>

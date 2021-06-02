@@ -121,5 +121,13 @@ gg_biomass_range <- ggplot(data = biomass_pooled) +
                    sd = sd(value), n = dplyr::n()) %>% 
   dplyr::mutate(starting = min + ((max - min) * 0.01)))
 
+#### Calculate uptake parameters ####
+ag_v_max <- mean(c(8.5, 8.3, 12.8, 16.4, 11.7, 14.0, 16.5, 14.4))
 
+bg_v_max <- mean(c(14.0, 10.9, 25.6, 73.3, 7.9, 52.6, 27.8, 18.4))
+
+
+ag_k_m <- mean(c(15.0, 11.7, 7.7, 7.6, 15.2, 14.7, 19.4, 5.1))
+
+bg_k_m <- mean(c(89.2, 172.1, 757.1, 765.5, 34.4, 649.5, 399.5, 60.8))
 
