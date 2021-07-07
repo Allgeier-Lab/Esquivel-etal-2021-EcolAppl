@@ -40,7 +40,7 @@ bridget_2021 <- readxl::read_xlsx("02_Data/01_Raw/Data_Bridget_040121.xlsx",
 # bahamas_2018 <- readxl::read_xlsx("02_Data/01_Raw/Haiti_Bahamas_Morph_Growth_Herbivory_2018.xlsx",
 #                                   sheet = "Bahamas Blade Level Data")
 
-surface_biomass_lm <- readr::read_rds("02_Data/02_Modified/04_various/surface_biomass_lm.rds")
+surface_biomass_lm <- readr::read_rds("02_Data/02_Modified/03_various/surface_biomass_lm.rds")
 
 #### Clean data ####
 
@@ -86,13 +86,13 @@ bridget_2021_cln <- dplyr::filter(bridget_2021, treatment %in% c("A", "B")) %>%
   dplyr::select(-core_id) %>% 
   purrr::set_names(c("dist", "name", "value"))
 
-# remove last rows with NA; to get sum per core unique values because weight on shoot level; scale to sqm
-bahamas_2018_cln <- dplyr::select(bahamas_2018, reef, dist, transect, blade_dry_weight) %>% 
-  dplyr::filter(!is.na(blade_dry_weight)) %>% 
-  dplyr::group_by(reef, dist, transect) %>% 
-  dplyr::summarise(value = sum(unique(blade_dry_weight)) * 100, .groups = "drop") %>%
-  select(-c(reef, transect)) %>% 
-  dplyr::mutate(name = "ag")
+# # remove last rows with NA; to get sum per core unique values because weight on shoot level; scale to sqm
+# bahamas_2018_cln <- dplyr::select(bahamas_2018, reef, dist, transect, blade_dry_weight) %>% 
+#   dplyr::filter(!is.na(blade_dry_weight)) %>% 
+#   dplyr::group_by(reef, dist, transect) %>% 
+#   dplyr::summarise(value = sum(unique(blade_dry_weight)) * 100, .groups = "drop") %>%
+#   select(-c(reef, transect)) %>% 
+#   dplyr::mutate(name = "ag")
 
 # create one data.frame; filter distance between 5 - 100 m
 biomass_pooled <- dplyr::bind_rows(layman = layman_2016_cln, 

@@ -20,17 +20,9 @@ parameters <- arrR::read_parameters(file = "02_Data/01_Raw/parameters.csv", sep 
 
 starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting-values.csv", sep = ";")
 
-# # load burnin model runs
-# result_nofish <- readr::read_rds("02_Data/02_Modified/02_run_model/result-nofish_14_2.rds")
-
-# # only last timestep needed here
-# result_nofish <- purrr::map(result_nofish, arrR::filter_mdlrn)
-
 #### Set arguments to run model ####
 
-parameters$seagrass_thres <- 3/4 # -1/4, 1/4, 1/2, 3/4
-
-parameters$seagrass_slope <- 2 # 1.5, 2
+parameters$seagrass_thres <- -1/4 # -1/4, -1/2, -3/4
 
 arrR::plot_allocation(parameters = parameters)
 
@@ -44,11 +36,13 @@ years <- 50
 
 max_i <- (60 * 24 * 365 * years) / min_per_i
 
-# # run seagrass once each day
-# seagrass_each <- 12
+# run seagrass once each day
+days <- 1
+
+seagrass_each <- (24 / (min_per_i / 60)) * days
 
 # save only final step
-save_each <- max_i / 2  # (24 / (min_per_i / 60)) * days
+save_each <- max_i / 2  
 
 # check if combination of max_i and save_each are possible
 max_i %% save_each
@@ -64,16 +58,13 @@ grain <- c(1, 1)
 reefs <- matrix(data = c(-1, 0, 0, 1, 1, 0, 0, -1, 0, 0),
                 ncol = 2, byrow = TRUE)
 
-# use starting log distribution of size
-use_log <- TRUE
-
 #### Setup experiment #### 
 
 # set repetitions
 repetitions <- 25
 
 # sequence nutrients pool sequence
-starting_biomass <- c(1/4, 1/2, 3/4, 1)
+starting_biomass <- c(1/4, 1/2, 3/4)
 
 # sequence of fish population
 pop_n <- c(1, 2, 4, 8, 16, 32)
@@ -114,7 +105,7 @@ plan(list(
 globals_model <- list(sim_experiment = sim_experiment,
                       starting_values = starting_values, parameters = parameters,
                       extent = extent, grain = grain, reefs = reefs,
-                      use_log = use_log, max_i = max_i, min_per_i = min_per_i,
+                      max_i = max_i, min_per_i = min_per_i, seagrass_each = seagrass_each,
                       save_each = save_each)
 
 #### Run model  ####
@@ -139,7 +130,7 @@ result_total %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = func
     
     # get stable values
     stable_values <- arrR::get_stable_values(starting_values = starting_values,
-                                             parameters = parameters)
+                                             parameters = parameters, fishpop = FALSE)
     
     # set stable values
     starting_values$detritus_pool <- stable_values$detritus_pool
@@ -154,19 +145,21 @@ result_total %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = func
     # setup fish
     input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor,
                                          starting_values = starting_values,
-                                         parameters = parameters, use_log = use_log,
+                                         parameters = parameters,
                                          verbose = FALSE)
     
     # run model
     result_rand <- arrR::run_simulation(seafloor = input_seafloor, fishpop = input_fishpop,
                                         parameters = parameters, movement = "rand",
                                         max_i = max_i, min_per_i = min_per_i,
+                                        seagrass_each = seagrass_each,
                                         save_each = save_each, verbose = FALSE) 
     
     # run model
     result_attr <- arrR::run_simulation(seafloor = input_seafloor, fishpop = input_fishpop,
                                         parameters = parameters, movement = "attr",
                                         max_i = max_i, min_per_i = min_per_i,
+                                        seagrass_each = seagrass_each,
                                         save_each = save_each, verbose = FALSE) 
     
     result_temp <- list(rand = result_rand, attr = result_attr)

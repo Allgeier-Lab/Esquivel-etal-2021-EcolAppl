@@ -20,9 +20,11 @@ source("01_Helper_functions/calc_fishpop_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/02_run_model/sim_experiment.rds")
 
-model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_75_2.rds")
+model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-75_2.rds")
 
 #### Preprocess and load data #### 
+
+timestep <- 219000 # 109500 219000
 
 # add row id to sim_experiment
 sim_experiment <- dplyr::mutate(sim_experiment, 
@@ -35,49 +37,94 @@ sim_experiment <- dplyr::mutate(sim_experiment,
 excretion_rand <- purrr::map_dfr(model_runs, function(i) {
   magrittr::extract2(i, "rand") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_excretion()}, .id = "id") %>% 
+    calc_total_excretion(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
 excretion_attr <- purrr::map_dfr(model_runs, function(i) {
   magrittr::extract2(i, "attr") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_excretion()}, .id = "id") %>% 
+    calc_total_excretion(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
-excretion_total <- dplyr::bind_rows(rand = excretion_rand, attr = excretion_attr, 
-                                    .id = "movement") %>% 
+# combine to one data.frame
+excretion_combined <- dplyr::bind_rows(rand = excretion_rand, attr = excretion_attr, 
+                                       .id = "movement") %>% 
   dplyr::left_join(sim_experiment, by = "id") %>% 
-  dplyr::group_by(movement, starting_biomass, pop_n) %>% 
-  dplyr::summarise(mean = mean(value), se = 1.96 * sd(value) / sqrt(dplyr::n()), 
-                   .groups = "drop") %>% 
+  dplyr::select(-measure) %>% 
   dplyr::mutate(movement = factor(movement, levels = c("rand", "attr")), 
                 starting_biomass = factor(starting_biomass, ordered = TRUE), 
                 pop_n = factor(pop_n, ordered = TRUE))
+
+# summarize excretion
+excretion_sum <- dplyr::group_by(excretion_combined, movement, starting_biomass, pop_n) %>% 
+  dplyr::summarise(mean = mean(value), se = 1.96 * sd(value) / sqrt(dplyr::n()), 
+                   .groups = "drop")
+
+# calc t test between move for starting, pop_n
+excretion_signif <- dplyr::group_by(excretion_combined, starting_biomass, pop_n) %>% 
+  dplyr::group_split() %>% 
+  purrr::map_dfr(function(i) {
+    
+    rand <- dplyr::filter(i, movement == "rand")
+    attr <- dplyr::filter(i, movement == "attr")
+    
+    t_test <- t.test(x = rand$value, y = attr$value, alternative = "two.sided", 
+                     conf.level = 0.95)
+    
+    tibble::tibble(starting_biomass = unique(i$starting_biomass), pop_n = unique(i$pop_n), 
+                   p_value = t_test$p.value)}) %>% 
+  dplyr::mutate(signif_lvl = dplyr::case_when(p_value < 0.001 ~ "***", p_value < 0.01 ~ "**",
+                                              p_value < 0.05 ~ "*", TRUE ~ "")) %>% 
+  dplyr::left_join(excretion_sum, by = c("starting_biomass", "pop_n")) %>% 
+  dplyr::group_by(starting_biomass, pop_n) %>% 
+  dplyr::filter(mean == max(mean))
 
 #### Calculate fish biomass ####
 
 size_rand <- purrr::map_dfr(model_runs, function(i) {
   magrittr::extract2(i, "rand") %>%
     magrittr::extract2("fishpop") %>% 
-    calc_fish_size()}, .id = "id") %>% 
+    calc_fish_size(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
 size_attr <- purrr::map_dfr(model_runs, function(i) {
   magrittr::extract2(i, "attr") %>%
     magrittr::extract2("fishpop") %>% 
-    calc_fish_size()}, .id = "id") %>% 
+    calc_fish_size(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
-size_total <- dplyr::bind_rows(rand = size_rand, attr = size_attr, 
-                               .id = "movement") %>% 
+# combine to one data.frame
+size_combined <- dplyr::bind_rows(rand = size_rand, attr = size_attr, .id = "movement") %>% 
   dplyr::left_join(sim_experiment, by = "id") %>% 
-  dplyr::group_by(movement, measure, starting_biomass, pop_n) %>% 
-  dplyr::summarise(mean = mean(value), se = 1.96 * sd(value) / sqrt(dplyr::n()), 
-                   .groups = "drop") %>% 
+  dplyr::filter(measure == "weight") %>% 
+  dplyr::select(-measure) %>% 
   dplyr::mutate(movement = factor(movement, levels = c("rand", "attr")), 
-                measure  = factor(measure, levels = c("length", "weight")), 
                 starting_biomass = factor(starting_biomass, ordered = TRUE), 
                 pop_n = factor(pop_n, ordered = TRUE))
+
+# summarize size
+size_sum <- dplyr::group_by(size_combined, movement, starting_biomass, pop_n) %>% 
+  dplyr::summarise(mean = mean(value), se = 1.96 * sd(value) / sqrt(dplyr::n()), 
+                   .groups = "drop") 
+
+# calc t_test
+size_signif <- dplyr::group_by(size_combined, starting_biomass, pop_n) %>% 
+  dplyr::group_split() %>% 
+  purrr::map_dfr(function(i) {
+    
+    rand <- dplyr::filter(i, movement == "rand")
+    attr <- dplyr::filter(i, movement == "attr")
+    
+    t_test <- t.test(x = rand$value, y = attr$value, alternative = "two.sided", 
+                     conf.level = 0.95)
+    
+    tibble::tibble(starting_biomass = unique(i$starting_biomass), pop_n = unique(i$pop_n), 
+                   p_value = t_test$p.value)}) %>% 
+  dplyr::mutate(signif_lvl = dplyr::case_when(p_value < 0.001 ~ "***", p_value < 0.01 ~ "**",
+                                              p_value < 0.05 ~ "*", TRUE ~ "")) %>% 
+  dplyr::left_join(size_sum, by = c("starting_biomass", "pop_n")) %>% 
+  dplyr::group_by(starting_biomass, pop_n) %>% 
+  dplyr::filter(mean == max(mean))
 
 #### Setup ggplots ####
 
@@ -105,51 +152,59 @@ base_size <- 8
 
 size_line <- 0.25
 
+size_label <- 5
+
 #### ggplot total bimass ####
 
-limits <- dplyr::mutate(size_total, 
+limits <- dplyr::mutate(size_sum, 
                         pop_n_class = dplyr::case_when(pop_n %in% c(1, 2, 4) ~ "low", 
                                                        pop_n %in% c(8, 16, 32) ~ "high"), 
                         pop_n_class = factor(pop_n_class, levels = c("low", "high"))) %>% 
   dplyr::group_by(pop_n_class) %>% 
-  dplyr::summarise(value = max(c(mean - se, mean + se)), 
-                   .groups = "drop") %>% 
+  dplyr::summarise(value = max(c(mean - se, mean + se)), .groups = "drop") %>% 
   dplyr::mutate(value = ceiling(value / 0.25) * 0.25)
 
-data_temp <- dplyr::filter(size_total, pop_n %in% c(1, 2, 4), measure == "weight")
+data_temp <- dplyr::filter(size_sum, pop_n %in% c(1, 2, 4))
+signif_temp <- dplyr::filter(size_signif, pop_n %in% c(1, 2, 4))
 
-gg_total_size_a <- ggplot(data = data_temp) +
+gg_total_size_a <- ggplot(data = data_temp) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
   geom_col(aes(x = starting_biomass, y = mean, fill = movement), 
            width = bar_width, position = pd) + 
   geom_linerange(aes(x = starting_biomass, ymin = mean - se, ymax = mean + se, 
                      col = movement, group = movement), position = pd, size = size_line) +
-  facet_wrap(. ~ pop_n, ncol = 6, labeller = lab_pop_n) + 
-  scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[1], length.out = 5), 
+  geom_text(data = signif_temp, size = size_label,
+            aes(x = starting_biomass, y = mean + se, label = signif_lvl, col = movement)) +
+  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n) + 
+  scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[1], length.out = 5),
                      limits = c(0, limits$value[1])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                     labels = c("Random movement", "Attraction towards AR")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
+  guides(col = "none") +
   labs(x = "", y = "Total fish biomass [g]") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar))
 
-data_temp <- dplyr::filter(size_total, pop_n %in% c(8, 16, 32), measure == "weight")
+data_temp <- dplyr::filter(size_sum, pop_n %in% c(8, 16, 32))
+signif_temp <- dplyr::filter(size_signif, pop_n %in% c(8, 16, 32))
 
-gg_total_size_b <- ggplot(data = data_temp) +
+gg_total_size_b <- ggplot(data = data_temp) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
   geom_col(aes(x = starting_biomass, y = mean, fill = movement), 
            width = bar_width, position = pd) + 
   geom_linerange(aes(x = starting_biomass, ymin = mean - se, ymax = mean + se, 
                      col = movement, group = movement), position = pd, size = size_line) +
-  facet_wrap(. ~ pop_n, ncol = 6, labeller = lab_pop_n) + 
-  guides(col = FALSE) +
-  scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[2], length.out = 5), 
+  geom_text(data = signif_temp, size = size_label,
+            aes(x = starting_biomass, y = mean + se, label = signif_lvl, col = movement)) +
+  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n) + 
+  scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[2], length.out = 5),
                      limits = c(0, limits$value[2])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                     labels = c("Random movement", "Attraction towards AR")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
+  guides(col = "none") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
@@ -157,51 +212,58 @@ gg_total_size_b <- ggplot(data = data_temp) +
 
 #### Create ggplot excretion ####
 
-limits <- dplyr::mutate(excretion_total, 
+limits <- dplyr::mutate(excretion_sum, 
                         pop_n_class = dplyr::case_when(pop_n %in% c(1, 2, 4) ~ "low", 
                                                        pop_n %in% c(8, 16, 32) ~ "high"), 
                         pop_n_class = factor(pop_n_class, levels = c("low", "high"))) %>% 
   dplyr::group_by(pop_n_class) %>% 
-  dplyr::summarise(value = max(c(mean - se, mean + se)), 
-                   .groups = "drop") %>% 
+  dplyr::summarise(value = max(c(mean - se, mean + se)), .groups = "drop") %>% 
   dplyr::mutate(value = ceiling(value / 0.25) * 0.25)
 
-data_temp <- dplyr::filter(excretion_total, pop_n %in% c(1, 2, 4))
+data_temp <- dplyr::filter(excretion_sum, pop_n %in% c(1, 2, 4))
+signif_temp <- dplyr::filter(excretion_signif, pop_n %in% c(1, 2, 4))
 
-gg_total_excretion_a <- ggplot(data = data_temp) +
+gg_total_excretion_a <- ggplot(data = data_temp) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
-  geom_col(aes(x = starting_biomass, y = mean, fill = movement), width = 0.45, position = pd) + 
+  geom_col(aes(x = starting_biomass, y = mean, fill = movement), 
+           width = bar_width, position = pd) + 
   geom_linerange(aes(x = starting_biomass, ymin = mean - se, ymax = mean + se, 
-                     col = movement, group = movement), position = pd, size = 0.5) +
-  facet_wrap(. ~ pop_n, ncol = 6) + 
-  guides(col = FALSE) +
-  scale_y_continuous(labels = scale_fun_b, breaks = seq(0, limits$value[1], length.out = 5),
+                     col = movement, group = movement), position = pd, size = size_line) +
+  geom_text(data = signif_temp, size = size_label,
+            aes(x = starting_biomass, y = mean + se, label = signif_lvl, col = movement)) +
+  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n) + 
+  scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[1], length.out = 5),
                      limits = c(0, limits$value[1])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                     labels = c("Random movement", "Attraction towards AR")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
-  labs(x = "", y = "Total fish excretion [g]") + 
+  guides(col = "none") +
+  labs(x = "", y = "Total nutrients excretion [g]") + 
   theme_classic(base_size = base_size) + 
-  theme(legend.position = "bottom", strip.text = element_blank(), 
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar))
 
-data_temp <- dplyr::filter(excretion_total, pop_n %in% c(8, 16, 32))
+data_temp <- dplyr::filter(excretion_sum, pop_n %in% c(8, 16, 32))
+signif_temp <- dplyr::filter(excretion_signif, pop_n %in% c(8, 16, 32))
 
-gg_total_excretion_b <- ggplot(data = data_temp) +
+gg_total_excretion_b <- ggplot(data = data_temp) + 
   geom_hline(yintercept = 0, linetype = 2, col = "lightgrey") +
-  geom_col(aes(x = starting_biomass, y = mean, fill = movement), width = 0.45, position = pd) + 
+  geom_col(aes(x = starting_biomass, y = mean, fill = movement), 
+           width = bar_width, position = pd) + 
   geom_linerange(aes(x = starting_biomass, ymin = mean - se, ymax = mean + se, 
-                     col = movement, group = movement), position = pd, size = 0.5) +
-  facet_wrap(. ~ pop_n, ncol = 6) + 
-  guides(col = FALSE) +
-  scale_y_continuous(labels = scale_fun_b, breaks = seq(0, limits$value[2], length.out = 5),
+                     col = movement, group = movement), position = pd, size = size_line) +
+  geom_text(data = signif_temp, size = size_label,
+            aes(x = starting_biomass, y = mean + se, label = signif_lvl, col = movement)) +
+  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n) + 
+  scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[2], length.out = 5),
                      limits = c(0, limits$value[2])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
                     labels = c("Random movement", "Attraction towards AR")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
+  guides(col = "none") +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
-  theme(legend.position = "bottom", strip.text = element_blank(), 
+  theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar))
 
 #### Create full figure ####

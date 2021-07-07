@@ -17,20 +17,17 @@ source("01_Helper_functions/calc_biomass_sobol.R")
 
 #### Load data ####
 
-model_runs_sobol <- readr::read_rds(file = "02_Data/02_Modified/02_sensitivity/model_runs_sobol.rds")
+model_runs_sobol <- readr::read_rds(file = "02_Data/02_Modified/01_sensitivity/model_runs_sobol_100.rds")
 
-model_sobol2007 <- readr::read_rds(file = "02_Data/02_Modified/02_sensitivity/model_sobol2007.rds")
+model_sobol2007 <- readr::read_rds(file = "02_Data/02_Modified/01_sensitivity/model_sobol2007_100.rds")
 
 #### Preprocess data ####
 
-parameters <- c("ag_gamma", "bg_biomass_max", 
-                "bg_gamma", "bg_thres", "detritus_ratio",
-                
-                "pop_a", "pop_b", "pop_linf", "pop_mean_move", 
-                "pop_n_body", "pop_visibility",
-                
-                "resp_intercept", "resp_slope", "resp_temp_low", 
-                "resp_temp_max", "resp_temp_optm")
+parameters <- c("ag_biomass_max", "ag_gamma", 
+                "bg_biomass_max",
+                "pop_b", "pop_linf", "pop_n_body",
+                "resp_intercept", "resp_slope", "resp_temp_low", "resp_temp_optm",
+                "seagrass_slough")
 
 # get sum of biomass and production and center by mean
 model_sobol_list <- purrr::map_dfr(model_runs_sobol, calc_biomass_sobol) %>% 
@@ -78,7 +75,7 @@ lab_name <- as_labeller(c("ag_biomass" = "Aboveground value",
                           "bg_production" = ""))
 
 lab_measure <- as_labeller(c("biomass" = "Biomass", 
-                          "production" = "Production"))
+                             "production" = "Production"))
 
 lab_measure_empty <- as_labeller(c("biomass" = "", 
                                    "production" = ""))
@@ -184,7 +181,7 @@ ggplot_sobol_lgd <- plot_grid(ggplot_sobol, legend,
 #### save result ####
 
 suppoRt::save_ggplot(plot = ggplot_sobol_lgd, 
-                     filename = "ggplot_sa_sobol.pdf", 
-                     path = "04_Figures/02_sensitivity_analysis/",     
+                     filename = "ggplot-sa-sobol_nobiom.pdf", 
+                     path = "04_Figures/01_sensitivity_analysis/",     
                      width = width, height = height * 0.5, dpi = dpi, units = units,
                      overwrite = FALSE)

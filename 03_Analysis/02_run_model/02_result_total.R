@@ -20,7 +20,7 @@ source("01_Helper_functions/calc_seagrass_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/02_run_model/sim_experiment.rds")
 
-model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_75_2.rds")
+model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-75_2.rds")
 
 #### Preprocess data #### 
 
@@ -30,23 +30,12 @@ sim_experiment <- dplyr::mutate(sim_experiment,
                                 .before = "starting_biomass",
                                 starting_biomass = starting_biomass * 100)
 
-norm <- TRUE
+# argument if result should be normalized by excretion
+norm <- FALSE
 
 #### Calc total excretion
 
-excretion_rand <- purrr::map_dfr(model_runs, function(i) {
-  magrittr::extract2(i, "rand") %>%
-    magrittr::extract2("seafloor") %>% 
-    calc_total_excretion()}, .id = "id") %>% 
-  dplyr::mutate(id = as.numeric(id)) %>% 
-  dplyr::left_join(sim_experiment, by = "id")
-
-excretion_attr <- purrr::map_dfr(model_runs, function(i) {
-  magrittr::extract2(i, "attr") %>%
-    magrittr::extract2("seafloor") %>% 
-    calc_total_excretion()}, .id = "id") %>% 
-  dplyr::mutate(id = as.numeric(id)) %>% 
-  dplyr::left_join(sim_experiment, by = "id")
+timestep <- 219000 # 109500 219000
 
 #### Calculate total biomass ####
 
@@ -54,20 +43,34 @@ excretion_attr <- purrr::map_dfr(model_runs, function(i) {
 biomass_rand <- purrr::map_dfr(model_runs, function(i) {
     magrittr::extract2(i, "rand") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_biomass()}, .id = "id") %>% 
+    calc_total_biomass(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
 biomass_attr <- purrr::map_dfr(model_runs, function(i) {
     magrittr::extract2(i, "attr") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_biomass()}, .id = "id") %>% 
+    calc_total_biomass(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
 # normalize by excretion
 if (norm) {
   
+  excretion_rand <- purrr::map_dfr(model_runs, function(i) {
+    magrittr::extract2(i, "rand") %>%
+      magrittr::extract2("seafloor") %>% 
+      calc_total_excretion(i = timestep)}, .id = "id") %>% 
+    dplyr::mutate(id = as.numeric(id)) %>% 
+    dplyr::left_join(sim_experiment, by = "id")
+  
   # biomass has two rows for each id because of ag/bg
   biomass_rand$value <- biomass_rand$value / rep(excretion_rand$value, each = 2)
+  
+  excretion_attr <- purrr::map_dfr(model_runs, function(i) {
+    magrittr::extract2(i, "attr") %>%
+      magrittr::extract2("seafloor") %>% 
+      calc_total_excretion(i = timestep)}, .id = "id") %>% 
+    dplyr::mutate(id = as.numeric(id)) %>% 
+    dplyr::left_join(sim_experiment, by = "id")
   
   biomass_attr$value <- biomass_attr$value / rep(excretion_attr$value, each = 2)
   
@@ -92,13 +95,13 @@ biomass_wide_ttl <- dplyr::group_by(biomass_wide,
 production_rand <- purrr::map_dfr(model_runs, function(i) {
     magrittr::extract2(i, "rand") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_production()}, .id = "id") %>% 
+    calc_total_production(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
 production_attr <- purrr::map_dfr(model_runs, function(i) {
     magrittr::extract2(i, "attr") %>%
     magrittr::extract2("seafloor") %>% 
-    calc_total_production()}, .id = "id") %>% 
+    calc_total_production(i = timestep)}, .id = "id") %>% 
   dplyr::mutate(id = as.numeric(id))
 
 # normalize by excretion
@@ -126,7 +129,7 @@ production_wide_ttl <- dplyr::group_by(production_wide,
 
 #### Response ratios after i ####
 
-pb <- progress::progress_bar$new(total = 144, width = 60,
+pb <- progress::progress_bar$new(total = 108, width = 60,
                                  format = " Progress [:bar] :percent Remaining: :eta")
 
 repetitions <- 1000
@@ -136,7 +139,7 @@ response_ratios <- dplyr::bind_rows(biomass = biomass_wide,
                                     production = production_wide, 
                                     production_ttl = production_wide_ttl) %>% 
   dplyr::group_by(part, starting_biomass, pop_n) %>% 
-  dplyr::group_split() %>% 
+  dplyr::group_split() %>% # length
   purrr::map_dfr(function(i) {
     
     pb$tick()
@@ -244,12 +247,12 @@ if (norm) {
                                       value.attr.bg.prod = value.attr.bg.prod * excretion_attr$value)
 }
 
-filename <- (model_runs[[1]]$rand$parameters$seagrass_thres * 100) %>% 
-  paste0("02_Data/02_Modified/02_run_model/complete-table_", ., "_", 
-         model_runs[[1]]$rand$parameters$seagrass_slope) %>% 
-  stringr::str_replace(pattern = "\\.", replacement = "") %>% 
+filename <- (model_runs[[1]]$rand$parameters$seagrass_thres * 100) %>%
+  paste0("02_Data/02_Modified/02_run_model/complete-table_", ., "_",
+         model_runs[[1]]$rand$parameters$seagrass_slope) %>%
+  stringr::str_replace(pattern = "\\.", replacement = "") %>%
   paste0(".csv")
-  
+
 readr::write_delim(complete_table_csv, file = filename,
                    delim = ";")
 
@@ -294,8 +297,6 @@ lab_pop_n_empty <- as_labeller(c(`1` = "", `2` = "",
                                  `16` = "", `32` = ""))
 
 ##### Full design ####
-
-# MH: Is as.numeric still needed?
 
 complete_table_text <- dplyr::mutate(complete_table, 
                                      value.ttl.biom.rel = ((value.attr.ag.biom + value.attr.bg.biom) - 
@@ -366,7 +367,7 @@ gg_full_ag_a <- ggplot(data = data_temp) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
                                            "#9B9B9B" = "#9B9B9B")) +
-  guides(col = FALSE) +
+  guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[1], limits$rr[1], length.out = 5), 
@@ -400,7 +401,7 @@ gg_full_ag_b <- ggplot(data = data_temp) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
                                            "#9B9B9B" = "#9B9B9B")) +
-  guides(col = FALSE) +
+  guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[2], limits$rr[2], length.out = 5), 
@@ -434,7 +435,7 @@ gg_full_bg_a <- ggplot(data = data_temp) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
                                            "#9B9B9B" = "#9B9B9B")) +
-  guides(col = FALSE) +
+  guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[3], limits$rr[3], length.out = 5), 
@@ -468,7 +469,7 @@ gg_full_bg_b <- ggplot(data = data_temp) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
                                            "#9B9B9B" = "#9B9B9B")) +
-  guides(col = FALSE) +
+  guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[4], limits$rr[4], length.out = 5), 
@@ -502,7 +503,7 @@ gg_full_ttl_a <- ggplot(data = data_temp) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
                                            "#9B9B9B" = "#9B9B9B")) +
-  guides(col = FALSE) +
+  guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[5], limits$rr[5], length.out = 5), 
@@ -535,7 +536,7 @@ gg_full_ttl_b <- ggplot(data = data_temp) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
                                            "#9B9B9B" = "#9B9B9B")) +
-  guides(col = FALSE) +
+  guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[6], limits$rr[6], length.out = 5), 
@@ -561,10 +562,10 @@ gg_full_design <- plot_grid(gg_full_design, legend,
 
 ### Save ggplot ####
 
-filename <- (model_runs[[1]]$rand$parameters$seagrass_thres * 100) %>% 
-  paste0("gg-full-design_", ., "_", 
-         model_runs[[1]]$rand$parameters$seagrass_slope) %>% 
-  stringr::str_replace(pattern = "\\.", replacement = "") %>% 
+filename <- (model_runs[[1]]$rand$parameters$seagrass_thres * 100) %>%
+  paste0("gg-full-design_", ., "_",
+         model_runs[[1]]$rand$parameters$seagrass_slope) %>%
+  stringr::str_replace(pattern = "\\.", replacement = "") %>%
   paste0(".pdf")
 
 suppoRt::save_ggplot(plot = gg_full_design, filename = filename,

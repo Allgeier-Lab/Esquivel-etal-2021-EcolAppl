@@ -20,7 +20,7 @@ source("01_Helper_functions/calc_seagrass_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/02_run_model/sim_experiment.rds")
 
-model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_75_2.rds")
+model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-75_2.rds")
 
 #### Preprocess data #### 
 
@@ -30,25 +30,29 @@ sim_experiment <- dplyr::mutate(sim_experiment,
                                 .before = "starting_biomass",
                                 starting_biomass = starting_biomass * 100)
 
-norm <- TRUE
+norm <- FALSE
 
 class_width <- 5
 
 #### Calc total excretion
 
-excretion_rand <- purrr::map_dfr(model_runs, function(i) {
-  magrittr::extract2(i, "rand") %>%
-    magrittr::extract2("seafloor") %>% 
-    calc_total_excretion()}, .id = "id") %>% 
-  dplyr::mutate(id = as.numeric(id)) %>% 
-  dplyr::left_join(sim_experiment, by = "id")
+if (norm) {
 
-excretion_attr <- purrr::map_dfr(model_runs, function(i) {
-  magrittr::extract2(i, "attr") %>%
-    magrittr::extract2("seafloor") %>% 
-    calc_total_excretion()}, .id = "id") %>% 
-  dplyr::mutate(id = as.numeric(id)) %>% 
-  dplyr::left_join(sim_experiment, by = "id")
+  excretion_rand <- purrr::map_dfr(model_runs, function(i) {
+    magrittr::extract2(i, "rand") %>%
+      magrittr::extract2("seafloor") %>% 
+      calc_total_excretion()}, .id = "id") %>% 
+    dplyr::mutate(id = as.numeric(id)) %>% 
+    dplyr::left_join(sim_experiment, by = "id")
+  
+  excretion_attr <- purrr::map_dfr(model_runs, function(i) {
+    magrittr::extract2(i, "attr") %>%
+      magrittr::extract2("seafloor") %>% 
+      calc_total_excretion()}, .id = "id") %>% 
+    dplyr::mutate(id = as.numeric(id)) %>% 
+    dplyr::left_join(sim_experiment, by = "id")
+
+}
 
 #### Calculate total biomass ####
 
@@ -67,15 +71,28 @@ biomass_attr <- purrr::map_dfr(model_runs, function(i) {
   dplyr::mutate(id = as.numeric(id)) %>% 
   dplyr::left_join(sim_experiment, by = "id")
 
-
 # normalize by excretion
 if (norm) {
+  
+  excretion_rand <- purrr::map_dfr(model_runs, function(i) {
+    magrittr::extract2(i, "rand") %>%
+      magrittr::extract2("seafloor") %>% 
+      calc_total_excretion()}, .id = "id") %>% 
+    dplyr::mutate(id = as.numeric(id)) %>% 
+    dplyr::left_join(sim_experiment, by = "id")
   
   biomass_rand <- dplyr::left_join(biomass_rand, excretion_rand, 
                                    by = c("id", "starting_biomass", "pop_n"),
                    suffix = c(".biom", ".excr")) %>% 
     dplyr::mutate(value = value.biom / value.excr) %>% 
     dplyr::select(-c(value.biom, value.excr))
+  
+  excretion_attr <- purrr::map_dfr(model_runs, function(i) {
+    magrittr::extract2(i, "attr") %>%
+      magrittr::extract2("seafloor") %>% 
+      calc_total_excretion()}, .id = "id") %>% 
+    dplyr::mutate(id = as.numeric(id)) %>% 
+    dplyr::left_join(sim_experiment, by = "id")
   
   biomass_attr <- dplyr::left_join(biomass_attr, excretion_attr, 
                                    by = c("id", "starting_biomass", "pop_n"),
@@ -393,7 +410,8 @@ gg_full_ttl_a_prod <- ggplot(data = data_temp) +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 data_temp <- dplyr::filter(response_ratios, part == "ttl", 
                            measure == "production", pop_n %in% c(8, 16, 32))
@@ -415,7 +433,8 @@ gg_full_ttl_b_prod <- ggplot(data = data_temp) +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar), 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 legend_prod <- get_legend(
   gg_full_ttl_b_prod
@@ -557,7 +576,8 @@ gg_full_ttl_a_biom <- ggplot(data = data_temp) +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 data_temp <- dplyr::filter(response_ratios, part == "ttl", 
                            measure == "biomass", pop_n %in% c(8, 16, 32))
@@ -579,7 +599,8 @@ gg_full_ttl_b_biom <- ggplot(data = data_temp) +
   labs(x = "", y = "") + 
   theme_classic(base_size = base_size) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
-        strip.background = element_blank(), plot.margin = margin(mar))
+        strip.background = element_blank(), plot.margin = margin(mar), 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 legend_biom <- get_legend(
   gg_full_ttl_b_biom
@@ -611,7 +632,7 @@ filename_biom <- (model_runs[[1]]$rand$parameters$seagrass_thres * 100) %>%
   stringr::str_replace(pattern = "\\.", replacement = "") %>% 
   paste0(".pdf")
 
-overwrite <- FALSE
+overwrite <- T
 
 suppoRt::save_ggplot(plot = gg_full_design_prod, filename = filename_prod,
                      path = "04_Figures/02_simulation_experiment/",
