@@ -20,7 +20,7 @@ source("01_Helper_functions/calc_seagrass_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/02_run_model/sim_experiment.rds")
 
-model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-75_2.rds")
+model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-25_2.rds")
 
 #### Preprocess data #### 
 

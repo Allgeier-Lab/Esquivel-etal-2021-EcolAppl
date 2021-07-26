@@ -130,7 +130,7 @@ result_total %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = func
     
     # get stable values
     stable_values <- arrR::get_stable_values(starting_values = starting_values,
-                                             parameters = parameters, fishpop = FALSE)
+                                             parameters = parameters)
     
     # set stable values
     starting_values$detritus_pool <- stable_values$detritus_pool
