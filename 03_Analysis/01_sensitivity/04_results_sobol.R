@@ -17,17 +17,21 @@ source("01_Helper_functions/calc_biomass_sobol.R")
 
 #### Load data ####
 
-model_runs_sobol <- readr::read_rds(file = "02_Data/02_Modified/01_sensitivity/model_runs_sobol_100.rds")
+model_runs_sobol <- readr::read_rds(file = "02_Data/02_Modified/01_sensitivity/model_runs_sobol.rds")
 
-model_sobol2007 <- readr::read_rds(file = "02_Data/02_Modified/01_sensitivity/model_sobol2007_100.rds")
+model_sobol2007 <- readr::read_rds(file = "02_Data/02_Modified/01_sensitivity/model_sobol2007.rds")
 
 #### Preprocess data ####
 
-parameters <- c("ag_biomass_max", "ag_gamma", 
-                "bg_biomass_max",
-                "pop_b", "pop_linf", "pop_n_body",
-                "resp_intercept", "resp_slope", "resp_temp_low", "resp_temp_optm",
-                "seagrass_slough")
+# [1] "ag_biomass_max" "ag_gamma" "bg_biomass_max" "pop_a" "pop_b"          
+# [6] "pop_linf" "pop_n_body" "resp_intercept" "resp_slope" "resp_temp_low" 
+# [11] resp_temp_optm" "seagrass_slough"
+
+parameters <- c("AG biomass max.", "AG biomass nutr. content", 
+                "BG biomass max.",
+                "L-W relationship (a)", "L-W relationship (b)", "Maximum length", "Nutr. proportion body mass",
+                "Respiration intercept", "Respiration slope", "Respiration temp. low", "Respiration temp. optimum",
+                "Slough proportion")
 
 # get sum of biomass and production and center by mean
 model_sobol_list <- purrr::map_dfr(model_runs_sobol, calc_biomass_sobol) %>% 
@@ -69,9 +73,9 @@ base_size <- 8
 mar <- c(t = 0, r = 2, b = 0, l = 2)
 
 # create labeller for panels
-lab_name <- as_labeller(c("ag_biomass" = "Aboveground value", 
+lab_name <- as_labeller(c("ag_biomass" = "Aboveground", 
                           "ag_production" = "",
-                          "bg_biomass" = "Belowground value", 
+                          "bg_biomass" = "Belowground", 
                           "bg_production" = ""))
 
 lab_measure <- as_labeller(c("biomass" = "Biomass", 
@@ -90,7 +94,7 @@ ggplot_sobol_ag_biom <- ggplot(data = dplyr::filter(model_sobol_df,
              size = 1.5, position = position_dodge(width = 0.5)) +
   geom_linerange(aes(x  = parameter, ymin = min_ci, ymax = max_ci, col = effect),
                  position = position_dodge(width = 0.5),size = 0.5) +
-  facet_wrap(. ~ name + measure, scales = "free", ncol = 2, nrow = 2, 
+  facet_wrap(. ~ measure + name, scales = "free", ncol = 2, nrow = 2, 
              labeller = labeller(name = lab_name, measure = lab_measure)) +
   scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
                                            "Total effect" = "#ED7953FF")) +
@@ -110,7 +114,7 @@ ggplot_sobol_ag_prod <- ggplot(data = dplyr::filter(model_sobol_df,
              size = 1.5, position = position_dodge(width = 0.5)) +
   geom_linerange(aes(x  = parameter, ymin = min_ci, ymax = max_ci, col = effect),
                  position = position_dodge(width = 0.5),size = 0.5) +
-  facet_wrap(. ~ name + measure, scales = "free", ncol = 2, nrow = 2, 
+  facet_wrap(. ~ measure + name, scales = "free", ncol = 2, nrow = 2, 
              labeller = labeller(name = lab_name, measure = lab_measure)) +
   scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
                                            "Total effect" = "#ED7953FF")) +
@@ -131,7 +135,7 @@ ggplot_sobol_bg_biom <- ggplot(data = dplyr::filter(model_sobol_df,
              size = 1.5, position = position_dodge(width = 0.5)) +
   geom_linerange(aes(x  = parameter, ymin = min_ci, ymax = max_ci, col = effect),
                  position = position_dodge(width = 0.5),size = 0.5) +
-  facet_wrap(. ~ name + measure, scales = "free", ncol = 2, nrow = 2, 
+  facet_wrap(. ~ measure + name, scales = "free", ncol = 2, nrow = 2, 
              labeller = labeller(name = lab_name, measure = lab_measure_empty)) +
   scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
                                            "Total effect" = "#ED7953FF")) +
@@ -151,7 +155,7 @@ ggplot_sobol_bg_prod <- ggplot(data = dplyr::filter(model_sobol_df,
              size = 1.5, position = position_dodge(width = 0.5)) +
   geom_linerange(aes(x  = parameter, ymin = min_ci, ymax = max_ci, col = effect),
                  position = position_dodge(width = 0.5),size = 0.5) +
-  facet_wrap(. ~ name + measure, scales = "free", ncol = 2, nrow = 2, 
+  facet_wrap(. ~ measure + name, scales = "free", ncol = 2, nrow = 2, 
              labeller = labeller(name = lab_name, measure = lab_measure_empty)) +
   scale_color_manual(name = "", values = c("Main effect" = "#0D0887FF",
                                            "Total effect" = "#ED7953FF")) +
@@ -181,7 +185,7 @@ ggplot_sobol_lgd <- plot_grid(ggplot_sobol, legend,
 #### save result ####
 
 suppoRt::save_ggplot(plot = ggplot_sobol_lgd, 
-                     filename = "ggplot-sa-sobol_nobiom.pdf", 
+                     filename = "ggplot-sa-sobol.pdf", 
                      path = "04_Figures/01_sensitivity_analysis/",     
                      width = width, height = height * 0.5, dpi = dpi, units = units,
                      overwrite = FALSE)

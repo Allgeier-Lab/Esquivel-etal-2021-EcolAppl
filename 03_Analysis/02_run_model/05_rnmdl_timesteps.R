@@ -22,7 +22,7 @@ starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting-values.
 
 #### Change parameters ####
 
-parameters$seagrass_thres <- -3/4 # -1/4, -1/2, -3/4
+parameters$seagrass_thres <- -1/4 # -1/4, -1/2, -3/4
 
 #### Set run time ####
 
@@ -46,8 +46,8 @@ max_i %% save_each
 
 #### Setup seafloor and stuff #### 
 
-# extent and grain of seafloor
-extent <- c(100, 100)
+# dimensions and grain of seafloor
+dimensions <- c(100, 100)
 
 grain <- c(1, 1)
 
@@ -67,7 +67,7 @@ starting_values$nutrients_pool <- stable_values$nutrients_pool
 starting_values$pop_n <- 6
 
 # setup seafloor
-input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain, reefs = reefs, 
+input_seafloor <- arrR::setup_seafloor(dimensions = dimensions, grain = grain, reefs = reefs, 
                                        starting_values = starting_values)
 
 # setup fish

@@ -20,7 +20,7 @@ source("01_Helper_functions/calc_seagrass_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/02_run_model/sim_experiment.rds")
 
-model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-75_2.rds")
+model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-25_2.rds")
 
 #### Preprocess data #### 
 
@@ -246,13 +246,13 @@ mar <- c(t = 0, r = 2, b = 0, l = 2)
 # point shape 
 shape <- 20
 
-base_size <- 8
+size_base <- 8
 
 size_text <- 2
 
 size_line <- 0.25
 
-size_point <- 0.75
+size_point <- 1
 
 # set position dodge
 pd <- position_dodge(width = 0.25)
@@ -266,37 +266,46 @@ labels_x <- seq(from = class_width,
 lab_part <- as_labeller(c("ag" = "Aboveground value", "bg" = "Belowground value", 
                           "ttl" = "Total value"))
 
-lab_part_n <- as_labeller(c("ag_1" = "Aboveground value",
+lab_part_n <- as_labeller(c("ag_1" = "Aboveground",
                             "ag_2" = "", "ag_4" = "",
                             "ag_8" = "", "ag_16" = "", "ag_32" = "",
-                            "bg_1" = "Belowground value",
+                            "bg_1" = "Belowground",
                             "bg_2" = "", "bg_4" = "",
                             "bg_8" = "", "bg_16" = "", "bg_32" = "",
-                            "ttl_1" = "Total value",
+                            "ttl_1" = "Total",
                             "ttl_2" = "", "ttl_4" = "",
                             "ttl_8" = "", "ttl_16" = "", "ttl_32" = ""))
 
-lab_pop_n <- as_labeller(c(`1` = "1 individuals", `2` = "2 individuals", 
-                           `4` = "4 individuals", `8` = "8 individuals", 
-                           `16` = "16 individuals", `32` = "32 individuals"))
+lab_pop_n <- as_labeller(c(`1` = "1 indiv.", `2` = "2 indiv.", 
+                           `4` = "4 indiv.", `8` = "8 indiv.", 
+                           `16` = "16 indiv.", `32` = "32 indiv."))
 
-lab_pop_n_emtpy <- as_labeller(c(`1` = "", `2` = "", 
+lab_pop_n_empty <- as_labeller(c(`1` = "", `2` = "", 
                                  `4` = "", `8` = "", 
                                  `16` = "", `32` = ""))
+
+
 
 #### Full design production ####
 
 # create figures
 
+# round the next full digit
+next_full <- 0.1
+
+# get limits
 limits <- dplyr::mutate(response_ratios, 
                         pop_n_class = dplyr::case_when(pop_n %in% c(1, 2, 4) ~ "low", 
                                                        pop_n %in% c(8, 16, 32) ~ "high"), 
-                        pop_n_class = factor(pop_n_class, levels = c("low", "high")),
-                        lo_abs = abs(lo), hi_abs = abs(hi)) %>% 
+                        pop_n_class = factor(pop_n_class, levels = c("low", "high"))) %>% 
   dplyr::filter(measure == "production") %>% 
   dplyr::group_by(part, pop_n_class) %>% 
-  dplyr::summarise(rr = max(c(lo_abs, hi_abs)), .groups = "drop") %>% 
-  dplyr::mutate(rr = ceiling(rr / 0.25) * 0.25)
+  dplyr::summarise(min = min(lo), max = max(hi), .groups = "drop") %>% 
+  dplyr::mutate(min = floor(min / next_full) * next_full, max = ceiling(max / next_full) * next_full) %>% 
+  dplyr::mutate(min = dplyr::case_when(min == 0 ~ -next_full, 
+                                       TRUE ~ min), 
+                max = dplyr::case_when(max == 0 ~ next_full, 
+                                       TRUE ~ max))
 
 data_temp <- dplyr::filter(response_ratios, part == "ag", 
                            measure == "production", pop_n %in% c(1, 2, 4))
@@ -311,12 +320,12 @@ gg_full_ag_a_prod <- ggplot(data = data_temp) +
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[1], limits$rr[1], length.out = 5), 
-                     limits = c(-limits$rr[1], limits$rr[1])) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[1], limits$max[1], length.out = 5), 
+                     limits = c(limits$min[1], limits$max[1])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -334,12 +343,12 @@ gg_full_ag_b_prod <- ggplot(data = data_temp) +
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[2], limits$rr[2], length.out = 5), 
-                     limits = c(-limits$rr[2], limits$rr[2])) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[2], limits$max[2], length.out = 5), 
+                     limits = c(limits$min[2], limits$max[2])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -356,13 +365,13 @@ gg_full_bg_a_prod <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[3], limits$rr[3], length.out = 5), 
-                     limits = c(-limits$rr[3], limits$rr[3])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[3], limits$max[3], length.out = 5), 
+                     limits = c(limits$min[3], limits$max[3])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
-  labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  labs(x = "", y = "Log response ratios") + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -379,13 +388,13 @@ gg_full_bg_b_prod <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[4], limits$rr[4], length.out = 5), 
-                     limits = c(-limits$rr[4], limits$rr[4])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[4], limits$max[4], length.out = 5), 
+                     limits = c(limits$min[4], limits$max[4])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -402,13 +411,13 @@ gg_full_ttl_a_prod <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[5], limits$rr[5], length.out = 5), 
-                     limits = c(-limits$rr[5], limits$rr[5])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[5], limits$max[5], length.out = 5), 
+                     limits = c(limits$min[5], limits$max[5])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar),
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
@@ -425,13 +434,13 @@ gg_full_ttl_b_prod <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[6], limits$rr[6], length.out = 5), 
-                     limits = c(-limits$rr[6], limits$rr[6])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[6], limits$max[6], length.out = 5), 
+                     limits = c(limits$min[6], limits$max[6])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
@@ -454,15 +463,22 @@ gg_full_design_prod <- plot_grid(gg_full_design_prod, legend_prod,
 
 #### Full design biomass ####
 
+# round the next full digit
+next_full <- 0.1
+
+# get limits
 limits <- dplyr::mutate(response_ratios, 
                         pop_n_class = dplyr::case_when(pop_n %in% c(1, 2, 4) ~ "low", 
                                                        pop_n %in% c(8, 16, 32) ~ "high"), 
-                        pop_n_class = factor(pop_n_class, levels = c("low", "high")),
-                        lo_abs = abs(lo), hi_abs = abs(hi)) %>% 
+                        pop_n_class = factor(pop_n_class, levels = c("low", "high"))) %>% 
   dplyr::filter(measure == "biomass") %>% 
   dplyr::group_by(part, pop_n_class) %>% 
-  dplyr::summarise(rr = max(c(lo_abs, hi_abs)), .groups = "drop") %>% 
-  dplyr::mutate(rr = ceiling(rr / 0.25) * 0.25)
+  dplyr::summarise(min = min(lo), max = max(hi), .groups = "drop") %>% 
+  dplyr::mutate(min = floor(min / next_full) * next_full, max = ceiling(max / next_full) * next_full) %>% 
+  dplyr::mutate(min = dplyr::case_when(min == 0 ~ -next_full, 
+                                       TRUE ~ min), 
+                max = dplyr::case_when(max == 0 ~ next_full, 
+                                       TRUE ~ max))
 
 data_temp <- dplyr::filter(response_ratios, part == "ag", 
                            measure == "biomass", pop_n %in% c(1, 2, 4))
@@ -477,12 +493,12 @@ gg_full_ag_a_biom <- ggplot(data = data_temp) +
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[1], limits$rr[1], length.out = 5), 
-                     limits = c(-limits$rr[1], limits$rr[1])) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[1], limits$max[1], length.out = 5), 
+                     limits = c(limits$min[1], limits$max[1])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -500,12 +516,12 @@ gg_full_ag_b_biom <- ggplot(data = data_temp) +
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[2], limits$rr[2], length.out = 5), 
-                     limits = c(-limits$rr[2], limits$rr[2])) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[2], limits$max[2], length.out = 5), 
+                     limits = c(limits$min[2], limits$max[2])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -522,13 +538,13 @@ gg_full_bg_a_biom <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[3], limits$rr[3], length.out = 5), 
-                     limits = c(-limits$rr[3], limits$rr[3])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[3], limits$max[3], length.out = 5), 
+                     limits = c(limits$min[3], limits$max[3])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
-  labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  labs(x = "", y = "Log response ratios") + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -545,13 +561,13 @@ gg_full_bg_b_biom <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[4], limits$rr[4], length.out = 5), 
-                     limits = c(-limits$rr[4], limits$rr[4])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[4], limits$max[4], length.out = 5), 
+                     limits = c(limits$min[4], limits$max[4])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -568,13 +584,13 @@ gg_full_ttl_a_biom <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[5], limits$rr[5], length.out = 5), 
-                     limits = c(-limits$rr[5], limits$rr[5])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[5], limits$max[5], length.out = 5), 
+                     limits = c(limits$min[5], limits$max[5])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar),
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
@@ -591,13 +607,13 @@ gg_full_ttl_b_biom <- ggplot(data = data_temp) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
-             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[6], limits$rr[6], length.out = 5), 
-                     limits = c(-limits$rr[6], limits$rr[6])) +
+             labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[6], limits$max[6], length.out = 5), 
+                     limits = c(limits$min[6], limits$max[6])) +
   scale_x_discrete(labels = labels_x) + 
   scale_color_viridis_d(name = "Starting capacity biomass [%]") +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0),
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
@@ -632,14 +648,12 @@ filename_biom <- (model_runs[[1]]$rand$parameters$seagrass_thres * 100) %>%
   stringr::str_replace(pattern = "\\.", replacement = "") %>% 
   paste0(".pdf")
 
-overwrite <- T
-
 suppoRt::save_ggplot(plot = gg_full_design_prod, filename = filename_prod,
                      path = "04_Figures/02_simulation_experiment/",
                      width = width, height = height * 0.5, dpi = dpi, units = units,
-                     overwrite = overwrite)
+                     overwrite = FALSE)
 
 suppoRt::save_ggplot(plot = gg_full_design_biom, filename = filename_biom,
                      path = "04_Figures/02_simulation_experiment/",
                      width = width, height = height * 0.5, dpi = dpi, units = units,
-                     overwrite = overwrite)
+                     overwrite = FALSE)

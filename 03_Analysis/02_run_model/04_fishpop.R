@@ -20,11 +20,11 @@ source("01_Helper_functions/calc_fishpop_values.R")
 
 sim_experiment <- readr::read_rds("02_Data/02_Modified/02_run_model/sim_experiment.rds")
 
-model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-75_2.rds")
+model_runs <- readr::read_rds("02_Data/02_Modified/02_run_model/model-runs_-25_2.rds")
 
 #### Preprocess and load data #### 
 
-timestep <- 219000 # 109500 219000
+timestep <- 219000
 
 # add row id to sim_experiment
 sim_experiment <- dplyr::mutate(sim_experiment, 
@@ -179,7 +179,7 @@ gg_total_size_a <- ggplot(data = data_temp) +
   scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[1], length.out = 5),
                      limits = c(0, limits$value[1])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
-                    labels = c("Random movement", "Attraction towards AR")) +
+                    labels = c("Random movement", "Attracted movement")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
   guides(col = "none") +
   labs(x = "", y = "Total fish biomass [g]") + 
@@ -202,7 +202,7 @@ gg_total_size_b <- ggplot(data = data_temp) +
   scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[2], length.out = 5),
                      limits = c(0, limits$value[2])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
-                    labels = c("Random movement", "Attraction towards AR")) +
+                    labels = c("Random movement", "Attracted movement")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
   guides(col = "none") +
   labs(x = "", y = "") + 
@@ -235,7 +235,7 @@ gg_total_excretion_a <- ggplot(data = data_temp) +
   scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[1], length.out = 5),
                      limits = c(0, limits$value[1])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
-                    labels = c("Random movement", "Attraction towards AR")) +
+                    labels = c("Random movement", "Attracted movement")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
   guides(col = "none") +
   labs(x = "", y = "Total nutrients excretion [g]") + 
@@ -258,7 +258,7 @@ gg_total_excretion_b <- ggplot(data = data_temp) +
   scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[2], length.out = 5),
                      limits = c(0, limits$value[2])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
-                    labels = c("Random movement", "Attraction towards AR")) +
+                    labels = c("Random movement", "Attracted movement")) +
   scale_color_manual(name = "", values = c("#46ACC8", "#B40F20")) +
   guides(col = "none") +
   labs(x = "", y = "") + 

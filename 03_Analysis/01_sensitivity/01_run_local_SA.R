@@ -46,16 +46,13 @@ seagrass_each <- (24 / (min_per_i / 60)) * days
 # save only final step
 save_each <- max_i  
 
-# use uniform distribution of starting fish population values
-use_log <- TRUE
-
 # set movement behavior to attraction towards the reef
 movement <- "attr"
 
 #### Setup seafloor #### 
 
 # extent and grain of seafloor
-extent <- c(100, 100)
+dimensions <- c(100, 100)
 
 grain <- c(1, 1)
 
@@ -72,11 +69,11 @@ reefs <- matrix(data = c(-1, 0, 0, 1, 1, 0, 0, -1, 0, 0),
 # pop_reserves_thres_lo, pop_reserves_thres_hi, pop_reserves_consump -> all set to 0/1
 
 # get id of parameters not to include
-para_id <- which(!names(parameters_def) %in%  c("seagrass_thres", "seagrass_slope", 
-                                                "nutrients_output",
-                                                "move_border", "move_reef", "move_return",
-                                                "pop_reserves_thres_lo", "pop_reserves_thres_hi", 
-                                                "pop_reserves_consump"))
+para_id <- which(!names(parameters_def) %in% c("seagrass_thres", "seagrass_slope", 
+                                               "nutrients_output",
+                                               "move_border", "move_reef", "move_return",
+                                               "pop_reserves_thres_lo", "pop_reserves_thres_hi", 
+                                               "pop_reserves_consump"))
 
 # create vector with names
 parameters_names <- paste(rep(x = names(parameters_def[para_id]), each = repetitions), 
@@ -104,10 +101,9 @@ plan(list(
 #### Run default parameters #### 
 
 globals_def <- list(starting_values = starting_values, parameters_def = parameters_def, 
-                    extent = extent, grain = grain, reefs = reefs, 
-                    use_log = use_log, movement = movement,
-                    seagrass_each = seagrass_each,
-                    max_i = max_i, min_per_i = min_per_i, save_each = save_each)
+                    dimensions = dimensions, grain = grain, reefs = reefs, movement = movement,
+                    seagrass_each = seagrass_each, max_i = max_i, min_per_i = min_per_i, 
+                    save_each = save_each)
 
 results_default %<-% future.apply::future_lapply(1:repetitions, FUN = function(i) {
   
@@ -115,7 +111,8 @@ results_default %<-% future.apply::future_lapply(1:repetitions, FUN = function(i
     
     # get stable values
     stable_values <- arrR::get_stable_values(starting_values = starting_values,
-                                             parameters = parameters_def)
+                                             parameters = parameters_def, 
+                                             verbose = FALSE)
     
     # set stable values
     starting_values$detritus_pool <- stable_values$detritus_pool
@@ -123,15 +120,13 @@ results_default %<-% future.apply::future_lapply(1:repetitions, FUN = function(i
     starting_values$nutrients_pool <- stable_values$nutrients_pool
     
     # create seafloor
-    input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain, reefs = reefs,
+    input_seafloor <- arrR::setup_seafloor(dimensions = dimensions, grain = grain, reefs = reefs,
                                            starting_values = starting_values,
                                            verbose = FALSE)
     
     # create population
-    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, 
-                                         starting_values = starting_values,
-                                         parameters = parameters_def, use_log = use_log, 
-                                         verbose = FALSE)
+    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, starting_values = starting_values,
+                                         parameters = parameters_def, verbose = FALSE)
     
     # run model
     result_temp <- arrR::run_simulation(seafloor = input_seafloor, fishpop = input_fishpop,
@@ -205,9 +200,8 @@ parameters_dec_10 <- change_parameters(x = parameters_def[para_id], change = -0.
 
 # increased by 5% #
 globals_inc_5 <- list(starting_values = starting_values, parameters_inc_5 = parameters_inc_5,
-                      extent = extent, grain = grain, reefs = reefs, 
-                      use_log = use_log, movement = movement,
-                      seagrass_each = seagrass_each,
+                      dimensions = dimensions, grain = grain, reefs = reefs,
+                      movement = movement, seagrass_each = seagrass_each,
                       max_i = max_i, min_per_i = min_per_i, save_each = save_each)
 
 results_inc_5 %<-% future.apply::future_lapply(seq_along(parameters_inc_5), FUN = function(i) {
@@ -226,7 +220,8 @@ results_inc_5 %<-% future.apply::future_lapply(seq_along(parameters_inc_5), FUN 
     
     # get stable values
     stable_values <- arrR::get_stable_values(starting_values = starting_values,
-                                             parameters = parameters_temp)
+                                             parameters = parameters_temp, 
+                                             verbose = FALSE)
     
     # set stable values
     starting_values$detritus_pool <- stable_values$detritus_pool
@@ -234,15 +229,13 @@ results_inc_5 %<-% future.apply::future_lapply(seq_along(parameters_inc_5), FUN 
     starting_values$nutrients_pool <- stable_values$nutrients_pool
     
     # create seafloor
-    input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain, reefs = reefs,
+    input_seafloor <- arrR::setup_seafloor(dimensions = dimensions, grain = grain, reefs = reefs,
                                            starting_values = starting_values,
                                            verbose = FALSE)
     
     # create population
-    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, 
-                                         starting_values = starting_values,
-                                         parameters = parameters_temp, use_log = use_log, 
-                                         verbose = FALSE)
+    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, starting_values = starting_values,
+                                         parameters = parameters_temp, verbose = FALSE)
     
     # run model
     result_temp <- arrR::run_simulation(seafloor = input_seafloor, fishpop = input_fishpop,
@@ -281,9 +274,8 @@ suppoRt::save_rds(object = model_runs_inc_5, filename = "model_runs_inc_5.rds",
 
 # decreased by 5% #
 globals_dec_5 <- list(starting_values = starting_values, parameters_dec_5 = parameters_dec_5,
-                      extent = extent, grain = grain, reefs = reefs, 
-                      use_log = use_log, movement = movement,
-                      seagrass_each = seagrass_each,
+                      dimensions = dimensions, grain = grain, reefs = reefs, 
+                      movement = movement, seagrass_each = seagrass_each,
                       max_i = max_i, min_per_i = min_per_i, save_each = save_each)
 
 results_dec_5 %<-% future.apply::future_lapply(seq_along(parameters_dec_5), FUN = function(i) {
@@ -310,15 +302,13 @@ results_dec_5 %<-% future.apply::future_lapply(seq_along(parameters_dec_5), FUN 
     starting_values$nutrients_pool <- stable_values$nutrients_pool
     
     # create seafloor
-    input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain, reefs = reefs,
+    input_seafloor <- arrR::setup_seafloor(dimensions = dimensions, grain = grain, reefs = reefs,
                                            starting_values = starting_values,
                                            verbose = FALSE)
     
     # create population
-    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, 
-                                         starting_values = starting_values,
-                                         parameters = parameters_temp, use_log = use_log, 
-                                         verbose = FALSE)
+    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, starting_values = starting_values,
+                                         parameters = parameters_temp, verbose = FALSE)
     
     # run model
     result_temp <- arrR::run_simulation(seafloor = input_seafloor, fishpop = input_fishpop,
@@ -357,9 +347,8 @@ suppoRt::save_rds(object = model_runs_dec_5, filename = "model_runs_dec_5.rds",
 
 # increased by 10% # 
 globals_inc_10 <- list(starting_values = starting_values, parameters_inc_10 = parameters_inc_10,
-                       extent = extent, grain = grain, reefs = reefs, 
-                       use_log = use_log, movement = movement,
-                       seagrass_each = seagrass_each,
+                       dimensions = dimensions, grain = grain, reefs = reefs, 
+                       movement = movement, seagrass_each = seagrass_each,
                        max_i = max_i, min_per_i = min_per_i, save_each = save_each)
 
 
@@ -379,7 +368,8 @@ results_inc_10 %<-% future.apply::future_lapply(seq_along(parameters_inc_10), FU
     
     # get stable values
     stable_values <- arrR::get_stable_values(starting_values = starting_values,
-                                             parameters = parameters_temp)
+                                             parameters = parameters_temp, 
+                                             verbose = FALSE)
     
     # set stable values
     starting_values$detritus_pool <- stable_values$detritus_pool
@@ -387,15 +377,13 @@ results_inc_10 %<-% future.apply::future_lapply(seq_along(parameters_inc_10), FU
     starting_values$nutrients_pool <- stable_values$nutrients_pool
     
     # create seafloor
-    input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain, reefs = reefs,
+    input_seafloor <- arrR::setup_seafloor(dimensions = dimensions, grain = grain, reefs = reefs,
                                            starting_values = starting_values,
                                            verbose = FALSE)
     
     # create population
-    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, 
-                                         starting_values = starting_values,
-                                         parameters = parameters_temp, use_log = use_log, 
-                                         verbose = FALSE)
+    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, starting_values = starting_values,
+                                         parameters = parameters_temp, verbose = FALSE)
     
     # run model
     result_temp <- arrR::run_simulation(seafloor = input_seafloor, fishpop = input_fishpop,
@@ -434,9 +422,8 @@ suppoRt::save_rds(object = model_runs_inc_10, filename = "model_runs_inc_10.rds"
 
 # decreased by 10% #
 globals_dec_10 <- list(starting_values = starting_values, parameters_dec_10 = parameters_dec_10,
-                       extent = extent, grain = grain, reefs = reefs, 
-                       use_log = use_log, movement = movement,
-                       seagrass_each = seagrass_each,
+                       dimensions = dimensions, grain = grain, reefs = reefs, 
+                       movement = movement, seagrass_each = seagrass_each,
                        max_i = max_i, min_per_i = min_per_i, save_each = save_each)
 
 results_dec_10 %<-% future.apply::future_lapply(seq_along(parameters_dec_10), FUN = function(i) {
@@ -455,7 +442,8 @@ results_dec_10 %<-% future.apply::future_lapply(seq_along(parameters_dec_10), FU
     
     # get stable values
     stable_values <- arrR::get_stable_values(starting_values = starting_values,
-                                             parameters = parameters_temp)
+                                             parameters = parameters_temp, 
+                                             verbose = FALSE)
     
     # set stable values
     starting_values$detritus_pool <- stable_values$detritus_pool
@@ -463,15 +451,13 @@ results_dec_10 %<-% future.apply::future_lapply(seq_along(parameters_dec_10), FU
     starting_values$nutrients_pool <- stable_values$nutrients_pool
     
     # create seafloor
-    input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain, reefs = reefs,
+    input_seafloor <- arrR::setup_seafloor(dimensions = dimensions, grain = grain, reefs = reefs,
                                            starting_values = starting_values,
                                            verbose = FALSE)
     
     # create population
-    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, 
-                                         starting_values = starting_values,
-                                         parameters = parameters_temp, use_log = use_log, 
-                                         verbose = FALSE)
+    input_fishpop <- arrR::setup_fishpop(seafloor = input_seafloor, starting_values = starting_values,
+                                         parameters = parameters_temp, verbose = FALSE)
     
     # run model
     result_temp <- arrR::run_simulation(seafloor = input_seafloor, fishpop = input_fishpop,

@@ -42,15 +42,15 @@ days <- 1
 seagrass_each <- (24 / (min_per_i / 60)) * days
 
 # save only final step
-save_each <- max_i / 2  
+save_each <- max_i
 
 # check if combination of max_i and save_each are possible
 max_i %% save_each
 
 #### Setup seafloor and stuff #### 
 
-# extent and grain of seafloor
-extent <- c(100, 100)
+# dimensions and grain of seafloor
+dimensions <- c(100, 100)
 
 grain <- c(1, 1)
 
@@ -104,7 +104,7 @@ plan(list(
 
 globals_model <- list(sim_experiment = sim_experiment,
                       starting_values = starting_values, parameters = parameters,
-                      extent = extent, grain = grain, reefs = reefs,
+                      dimensions = dimensions, grain = grain, reefs = reefs,
                       max_i = max_i, min_per_i = min_per_i, seagrass_each = seagrass_each,
                       save_each = save_each)
 
@@ -138,7 +138,7 @@ result_total %<-% future.apply::future_lapply(1:nrow(sim_experiment), FUN = func
     starting_values$nutrients_pool <- stable_values$nutrients_pool
     
     # setup seafloor
-    input_seafloor <- arrR::setup_seafloor(extent = extent, grain = grain, reefs = reefs, 
+    input_seafloor <- arrR::setup_seafloor(dimensions = dimensions, grain = grain, reefs = reefs, 
                                            starting_values = starting_values, 
                                            verbose = FALSE)
     

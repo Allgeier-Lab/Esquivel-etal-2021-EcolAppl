@@ -25,7 +25,7 @@ parameters_def <- arrR::read_parameters(file = "02_Data/01_Raw/parameters.csv", 
 starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting-values.csv", sep = ";")
 
 # create vector with names
-repetitions <- 25 # make sure identical to 02a_run_local_SA.R
+repetitions <- 25 # make sure identical to 01_run_local_SA.R
 
 parameters_names <- paste(rep(x = names(parameters_def), each = repetitions),
                           1:repetitions, sep = "_")
@@ -84,8 +84,6 @@ parameter_changed <- dplyr::filter(sa_biomass, diff_mean > 5.0 | diff_mean < -5.
   dplyr::arrange(name, parameter) %>% 
   dplyr::select(name, parameter, `Increased +5%`, `Increased +10%`,
                 `Decreased -5%`, `Decreased -10%`)
-
-# write.table(parameter_changed)
 
 # print only parameter names
 unique(parameter_changed$parameter) %>% 

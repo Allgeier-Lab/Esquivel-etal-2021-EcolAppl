@@ -16,7 +16,7 @@ source("01_Helper_functions/setup.R")
 
 parameters <- arrR::read_parameters(file = "02_Data/01_Raw/parameters.csv", sep = ";")
 
-starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting_values.csv", sep = ";")
+starting_values <- arrR::read_parameters(file = "02_Data/01_Raw/starting-values.csv", sep = ";")
 
 starting_values$pop_n <- 16
 
@@ -142,5 +142,5 @@ gg_location_excretion <- cowplot::plot_grid(gg_fish_location, gg_excretion,
 
 # save ggplot
 suppoRt::save_ggplot(plot = gg_location_excretion, filename = "gg_location_excretion.pdf", 
-                     path = "04_Figures/04_various/", overwrite = FALSE, 
+                     path = "04_Figures/03_various/", overwrite = FALSE, 
                      width = width, height = height / 2, dpi = dpi, units = "mm")

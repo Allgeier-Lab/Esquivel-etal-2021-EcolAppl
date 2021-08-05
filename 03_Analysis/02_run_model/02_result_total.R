@@ -35,7 +35,7 @@ norm <- FALSE
 
 #### Calc total excretion
 
-timestep <- 219000 # 109500 219000
+timestep <- 219000
 
 #### Calculate total biomass ####
 
@@ -199,17 +199,17 @@ complete_table <- dplyr::left_join(x = biomass_table, y = production_table,
                 value.ag.prod.rel = (value.attr.ag.prod - value.rand.ag.prod) / value.rand.ag.prod * 100,
                 value.bg.prod.rel = (value.attr.bg.prod - value.rand.bg.prod) / value.rand.bg.prod * 100, 
                 value.ttl.prod.rel = (value.attr.ttl.prod - value.rand.ttl.prod) / value.rand.ttl.prod * 100,
-                rr.ag.biom = dplyr::case_when(hi.ag.biom < 0 ~ "rand", lo.ag.biom > 0 ~ "attr",
+                rr.ag.biom = dplyr::case_when(hi.ag.biom < 0 ~ "Rand", lo.ag.biom > 0 ~ "Attr",
                                               TRUE ~ "n.s."),
-                rr.ag.prod = dplyr::case_when(hi.ag.prod < 0 ~ "rand", lo.ag.prod > 0 ~ "attr",
+                rr.ag.prod = dplyr::case_when(hi.ag.prod < 0 ~ "Rand", lo.ag.prod > 0 ~ "Attr",
                                               TRUE ~ "n.s."), 
-                rr.bg.biom = dplyr::case_when(hi.bg.biom < 0 ~ "rand", lo.bg.biom > 0 ~ "attr",
+                rr.bg.biom = dplyr::case_when(hi.bg.biom < 0 ~ "Rand", lo.bg.biom > 0 ~ "Attr",
                                               TRUE ~ "n.s."),
-                rr.bg.prod = dplyr::case_when(hi.bg.prod < 0 ~ "rand", lo.bg.prod > 0 ~ "attr",
+                rr.bg.prod = dplyr::case_when(hi.bg.prod < 0 ~ "Rand", lo.bg.prod > 0 ~ "Attr",
                                               TRUE ~ "n.s.") ,
-                rr.ttl.biom = dplyr::case_when(hi.ttl.biom < 0 ~ "rand", lo.ttl.biom > 0 ~ "attr",
+                rr.ttl.biom = dplyr::case_when(hi.ttl.biom < 0 ~ "Rand", lo.ttl.biom > 0 ~ "Attr",
                                               TRUE ~ "n.s."),
-                rr.ttl.prod = dplyr::case_when(hi.ttl.prod < 0 ~ "rand", lo.ttl.prod > 0 ~ "attr",
+                rr.ttl.prod = dplyr::case_when(hi.ttl.prod < 0 ~ "Rand", lo.ttl.prod > 0 ~ "Attr",
                                                TRUE ~ "n.s.")) %>% 
   dplyr::select(pop_n, starting_biomass, 
                 value.rand.ag.biom, value.attr.ag.biom, value.ag.biom.rel, rr.ag.biom,
@@ -270,27 +270,27 @@ pd <- position_dodge(width = 0.2)
 # point shape 
 shape <- 20
 
-base_size <- 8
+size_base <- 10
 
 size_text <- 2
 
 size_line <- 0.25
 
-size_point <- 0.75
+size_point <- 1
 
-lab_part_n <- as_labeller(c("ag_1" = "Aboveground value", 
+lab_part_n <- as_labeller(c("ag_1" = "Aboveground", 
                             "ag_2" = "", "ag_4" = "", 
                             "ag_8" = "", "ag_16" = "", "ag_32" = "", 
-                            "bg_1" = "Belowground value", 
+                            "bg_1" = "Belowground", 
                             "bg_2" = "", "bg_4" = "", 
                             "bg_8" = "", "bg_16" = "", "bg_32" = "", 
-                            "ttl_1" = "Total value", 
+                            "ttl_1" = "Total", 
                             "ttl_2" = "", "ttl_4" = "", 
                             "ttl_8" = "", "ttl_16" = "", "ttl_32" = ""))
 
-lab_pop_n <- as_labeller(c(`1` = "1 individuals", `2` = "2 individuals", 
-                           `4` = "4 individuals", `8` = "8 individuals", 
-                           `16` = "16 individuals", `32` = "32 individuals"))
+lab_pop_n <- as_labeller(c(`1` = "1 indiv.", `2` = "2 indiv.", 
+                           `4` = "4 indiv.", `8` = "8 indiv.", 
+                           `16` = "16 indiv.", `32` = "32 indiv."))
 
 lab_pop_n_empty <- as_labeller(c(`1` = "", `2` = "", 
                                  `4` = "", `8` = "", 
@@ -335,14 +335,26 @@ complete_table_text <- dplyr::select(complete_table, pop_n, starting_biomass,
 
 # create figures
 
+# round the next full digit
+next_full <- 0.05
+
+# set position of % labels
+text_a <- 1.4
+
+text_b <- 1.1
+
+# get limits
 limits <- dplyr::mutate(response_ratios, 
                         pop_n_class = dplyr::case_when(pop_n %in% c(1, 2, 4) ~ "low", 
                                                        pop_n %in% c(8, 16, 32) ~ "high"), 
-                        pop_n_class = factor(pop_n_class, levels = c("low", "high")),
-                        lo_abs = abs(lo), hi_abs = abs(hi)) %>% 
+                        pop_n_class = factor(pop_n_class, levels = c("low", "high"))) %>% 
   dplyr::group_by(part, pop_n_class) %>% 
-  dplyr::summarise(rr = max(c(lo_abs, hi_abs)), .groups = "drop") %>% 
-  dplyr::mutate(rr = ceiling(rr / 0.25) * 0.25)
+  dplyr::summarise(min = min(lo), max = max(hi), .groups = "drop") %>% 
+  dplyr::mutate(min = floor(min / next_full) * next_full, max = ceiling(max / next_full) * next_full) %>% 
+  dplyr::mutate(min = dplyr::case_when(min == 0 ~ -next_full, 
+                                       TRUE ~ min), 
+                max = dplyr::case_when(max == 0 ~ next_full, 
+                                       TRUE ~ max))
 
 data_temp <- dplyr::filter(response_ratios, part == "ag", pop_n %in% c(1, 2, 4))
 text_temp <- dplyr::filter(complete_table_text, part == "ag", pop_n %in% c(1, 2, 4))
@@ -358,11 +370,11 @@ gg_full_ag_a <- ggplot(data = data_temp) +
   geom_linerange(aes(x = starting_biomass, ymin = lo, ymax = hi, col = measure, group = measure), 
                  position = pd, size = size_line) +
   ggnewscale::new_scale_color() +
-  geom_text(data = dplyr::filter(text_temp, measure == "biomass"), 
-            aes(x = starting_biomass, y = limits$rr[1] * 1.2, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "biomass"),
+            aes(x = starting_biomass, y = limits$max[1] * text_a, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
-  geom_text(data = dplyr::filter(text_temp, measure == "production"), 
-            aes(x = starting_biomass, y = limits$rr[1] * 1.05, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "production"),
+            aes(x = starting_biomass, y = limits$max[1] * text_b, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
@@ -370,10 +382,10 @@ gg_full_ag_a <- ggplot(data = data_temp) +
   guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[1], limits$rr[1], length.out = 5), 
-                     limits = c(-limits$rr[1], limits$rr[1] * 1.2)) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[1], limits$max[1], length.out = 5),
+                     limits = c(limits$min[1], limits$max[1] * text_a)) +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -392,11 +404,11 @@ gg_full_ag_b <- ggplot(data = data_temp) +
   geom_linerange(aes(x = starting_biomass, ymin = lo, ymax = hi, col = measure, group = measure), 
                  position = pd, size = size_line) +
   ggnewscale::new_scale_color() +
-  geom_text(data = dplyr::filter(text_temp, measure == "biomass"), 
-            aes(x = starting_biomass, y = limits$rr[2] * 1.2, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "biomass"),
+            aes(x = starting_biomass, y = limits$max[2] * text_a, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
-  geom_text(data = dplyr::filter(text_temp, measure == "production"), 
-            aes(x = starting_biomass, y = limits$rr[2] * 1.05, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "production"),
+            aes(x = starting_biomass, y = limits$max[2] * text_b, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
@@ -404,10 +416,10 @@ gg_full_ag_b <- ggplot(data = data_temp) +
   guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[2], limits$rr[2], length.out = 5), 
-                     limits = c(-limits$rr[2], limits$rr[2] * 1.2)) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[2], limits$max[2], length.out = 5),
+                     limits = c(limits$min[2], limits$max[2] * text_a)) +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -426,11 +438,11 @@ gg_full_bg_a <- ggplot(data = data_temp) +
   geom_linerange(aes(x = starting_biomass, ymin = lo, ymax = hi, col = measure, group = measure), 
                  position = pd, size = size_line) +
   ggnewscale::new_scale_color() +
-  geom_text(data = dplyr::filter(text_temp, measure == "biomass"), 
-            aes(x = starting_biomass, y = limits$rr[3] * 1.2, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "biomass"),
+            aes(x = starting_biomass, y = limits$max[3] * text_a, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
-  geom_text(data = dplyr::filter(text_temp, measure == "production"), 
-            aes(x = starting_biomass, y = limits$rr[3] * 1.05, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "production"),
+            aes(x = starting_biomass, y = limits$max[3] * text_b, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
@@ -438,10 +450,10 @@ gg_full_bg_a <- ggplot(data = data_temp) +
   guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[3], limits$rr[3], length.out = 5), 
-                     limits = c(-limits$rr[3], limits$rr[3] * 1.2)) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[3], limits$max[3], length.out = 5),
+                     limits = c(limits$min[3], limits$max[3] * text_a)) +
   labs(x = "", y = "Log response ratios") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -460,11 +472,11 @@ gg_full_bg_b <- ggplot(data = data_temp) +
   geom_linerange(aes(x = starting_biomass, ymin = lo, ymax = hi, col = measure, group = measure), 
                  position = pd, size = size_line) +
   ggnewscale::new_scale_color() +
-  geom_text(data = dplyr::filter(text_temp, measure == "biomass"), 
-            aes(x = starting_biomass, y = limits$rr[4] * 1.2, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "biomass"),
+            aes(x = starting_biomass, y = limits$max[4] * text_a, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
-  geom_text(data = dplyr::filter(text_temp, measure == "production"), 
-            aes(x = starting_biomass, y = limits$rr[4] * 1.05, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "production"),
+            aes(x = starting_biomass, y = limits$max[4] * text_b, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
@@ -472,10 +484,10 @@ gg_full_bg_b <- ggplot(data = data_temp) +
   guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[4], limits$rr[4], length.out = 5), 
-                     limits = c(-limits$rr[4], limits$rr[4] * 1.2)) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[4], limits$max[4], length.out = 5),
+                     limits = c(limits$min[4], limits$max[4] * text_a)) +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar), 
         axis.text.x = element_blank())
@@ -494,11 +506,11 @@ gg_full_ttl_a <- ggplot(data = data_temp) +
   geom_linerange(aes(x = starting_biomass, ymin = lo, ymax = hi, col = measure, group = measure), 
                  position = pd, size = size_line) +
   ggnewscale::new_scale_color() +
-  geom_text(data = dplyr::filter(text_temp, measure == "biomass"), 
-            aes(x = starting_biomass, y = limits$rr[5] * 1.2, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "biomass"),
+            aes(x = starting_biomass, y = limits$max[5] * text_a, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
-  geom_text(data = dplyr::filter(text_temp, measure == "production"), 
-            aes(x = starting_biomass, y = limits$rr[5] * 1.05, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "production"),
+            aes(x = starting_biomass, y = limits$max[5] * text_b, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
@@ -506,10 +518,10 @@ gg_full_ttl_a <- ggplot(data = data_temp) +
   guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[5], limits$rr[5], length.out = 5), 
-                     limits = c(-limits$rr[5], limits$rr[5] * 1.2)) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[5], limits$max[5], length.out = 5),
+                     limits = c(limits$min[5], limits$max[5] * text_a)) +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar))
 
@@ -527,11 +539,11 @@ gg_full_ttl_b <- ggplot(data = data_temp) +
   geom_linerange(aes(x = starting_biomass, ymin = lo, ymax = hi, col = measure, group = measure), 
                  position = pd, size = size_line) +
   ggnewscale::new_scale_color() +
-  geom_text(data = dplyr::filter(text_temp, measure == "biomass"), 
-            aes(x = starting_biomass, y = limits$rr[6] * 1.2, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "biomass"),
+            aes(x = starting_biomass, y = limits$max[6] * text_a, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
-  geom_text(data = dplyr::filter(text_temp, measure == "production"), 
-            aes(x = starting_biomass, y = limits$rr[6] * 1.05, label = paste0(value.perc, "%"), col = color), 
+  geom_text(data = dplyr::filter(text_temp, measure == "production"),
+            aes(x = starting_biomass, y = limits$max[6] * text_b, label = paste0(value.perc, "%"), col = color),
             size = size_text) +
   scale_color_manual(name = "", values = c("#46ACC8" = "#46ACC8", 
                                            "#B40F20" = "#B40F20", 
@@ -539,10 +551,10 @@ gg_full_ttl_b <- ggplot(data = data_temp) +
   guides(col = "none") +
   facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
-  scale_y_continuous(labels = scale_fun, breaks = seq(-limits$rr[6], limits$rr[6], length.out = 5), 
-                     limits = c(-limits$rr[6], limits$rr[6] * 1.2)) +
+  scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[6], limits$max[6], length.out = 5),
+                     limits = c(limits$min[6], limits$max[6] * text_a)) +
   labs(x = "", y = "") + 
-  theme_classic(base_size = base_size) + 
+  theme_classic(base_size = size_base) + 
   theme(legend.position = "bottom", strip.text = element_text(hjust = 0), 
         strip.background = element_blank(), plot.margin = margin(mar))
 
