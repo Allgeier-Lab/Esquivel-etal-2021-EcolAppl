@@ -132,6 +132,10 @@ lab_pop_n <- as_labeller(c(`1` = "1 individual", `2` = "2 individuals",
                            `4` = "4 individuals", `8` = "8 individuals", 
                            `16` = "16 individuals", `32` = "32 individuals"))
 
+lab_pop_n_empty <- as_labeller(c(`1` = "", `2` = "", 
+                                 `4` = "", `8` = "", 
+                                 `16` = "", `32` = ""))
+
 # print 2 digits on y-axsis
 scale_fun_a <- function(x) sprintf("%.2f", x)
 
@@ -148,7 +152,7 @@ pd <- position_dodge(width = 0.5)
 
 bar_width <- 0.45
 
-base_size <- 8
+base_size <- 10
 
 size_line <- 0.25
 
@@ -231,7 +235,7 @@ gg_total_excretion_a <- ggplot(data = data_temp) +
                      col = movement, group = movement), position = pd, size = size_line) +
   geom_text(data = signif_temp, size = size_label,
             aes(x = starting_biomass, y = mean + se, label = signif_lvl, col = movement)) +
-  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n) + 
+  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n_empty) + 
   scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[1], length.out = 5),
                      limits = c(0, limits$value[1])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 
@@ -254,7 +258,7 @@ gg_total_excretion_b <- ggplot(data = data_temp) +
                      col = movement, group = movement), position = pd, size = size_line) +
   geom_text(data = signif_temp, size = size_label,
             aes(x = starting_biomass, y = mean + se, label = signif_lvl, col = movement)) +
-  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n) + 
+  facet_wrap(. ~ pop_n, ncol = 3, labeller = lab_pop_n_empty) + 
   scale_y_continuous(labels = scale_fun_a, breaks = seq(0, limits$value[2], length.out = 5),
                      limits = c(0, limits$value[2])) +
   scale_fill_manual(name = "", values = c("#46ACC8", "#B40F20"), 

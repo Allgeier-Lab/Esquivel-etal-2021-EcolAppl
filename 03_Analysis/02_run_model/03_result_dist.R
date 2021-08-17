@@ -318,7 +318,7 @@ gg_full_ag_a_prod <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[1], limits$max[1], length.out = 5), 
                      limits = c(limits$min[1], limits$max[1])) +
@@ -341,7 +341,7 @@ gg_full_ag_b_prod <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[2], limits$max[2], length.out = 5), 
                      limits = c(limits$min[2], limits$max[2])) +
@@ -364,7 +364,7 @@ gg_full_bg_a_prod <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[3], limits$max[3], length.out = 5), 
                      limits = c(limits$min[3], limits$max[3])) +
@@ -387,7 +387,7 @@ gg_full_bg_b_prod <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[4], limits$max[4], length.out = 5), 
                      limits = c(limits$min[4], limits$max[4])) +
@@ -410,7 +410,7 @@ gg_full_ttl_a_prod <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[5], limits$max[5], length.out = 5), 
                      limits = c(limits$min[5], limits$max[5])) +
@@ -433,7 +433,7 @@ gg_full_ttl_b_prod <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[6], limits$max[6], length.out = 5), 
                      limits = c(limits$min[6], limits$max[6])) +
@@ -491,7 +491,7 @@ gg_full_ag_a_biom <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[1], limits$max[1], length.out = 5), 
                      limits = c(limits$min[1], limits$max[1])) +
@@ -514,7 +514,7 @@ gg_full_ag_b_biom <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[2], limits$max[2], length.out = 5), 
                      limits = c(limits$min[2], limits$max[2])) +
@@ -537,7 +537,7 @@ gg_full_bg_a_biom <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[3], limits$max[3], length.out = 5), 
                      limits = c(limits$min[3], limits$max[3])) +
@@ -560,7 +560,7 @@ gg_full_bg_b_biom <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[4], limits$max[4], length.out = 5), 
                      limits = c(limits$min[4], limits$max[4])) +
@@ -583,7 +583,7 @@ gg_full_ttl_a_biom <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[5], limits$max[5], length.out = 5), 
                      limits = c(limits$min[5], limits$max[5])) +
@@ -606,7 +606,7 @@ gg_full_ttl_b_biom <- ggplot(data = data_temp) +
              shape = shape, size = size_point) +
   geom_linerange(aes(x = dist_class, ymin = lo, ymax = hi, col = starting_biomass,
                      group = interaction(starting_biomass, measure)), size = size_line) +
-  facet_wrap(. ~ part_n + pop_n, scales = "fixed", nrow = 1, ncol = 3, 
+  facet_wrap(. ~ pop_n + part_n, scales = "fixed", nrow = 1, ncol = 3, 
              labeller = labeller(part_n = lab_part_n, pop_n = lab_pop_n_empty))  + 
   scale_y_continuous(labels = scale_fun, breaks = seq(limits$min[6], limits$max[6], length.out = 5), 
                      limits = c(limits$min[6], limits$max[6])) +
