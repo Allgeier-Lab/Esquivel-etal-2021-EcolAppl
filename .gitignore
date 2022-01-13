@@ -2,7 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
-02_Data/01_Raw/
+02_Data/01_Raw/*.xlsx
+02_Data/01_Raw/LW_Haemulon-plumierii.csv
+02_Data/01_Raw/seagrass_bridget.csv
 02_Data/02_Modified/
 04_Figures/01_sensitivity_analysis/*.pdf
 04_Figures/02_simulation_experiment/*.pdf

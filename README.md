@@ -1,18 +1,18 @@
-### Mechanistic support for increased primary production around artificial reefs
-
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+### Mechanistic support for increased primary production around artificial reefs
 
 This repository stores all analyzing `R` scripts for **Esquivel, K.E., Hesselbarth, M.H.K., Allgeier, J.E. Mechanistic support for increased primary production around artificial reefs. Manuscript submitted for publication.**
 
 The repository contains the following folders (see README.txt in each folder for sub-directories):
 - `01_Helper_Functions/`
-  - Helper functions
+  - Folder containing R helper functions
 - `02_Data/`
-  - R scripts to replicate results and figures of use case 
+  - Folder containing starting values and parameters of analyses
 - `03_Analysis/`
-  - Folder containing output of use case
+  - Folder containing R scripts to replicate results and figures
 - `/04_Figures`
-  - Folder containing figures/plots of results
+  -  (Dummy) Folder containing figures
   
 **Correspondence:**
 
