@@ -351,9 +351,9 @@ limits <- dplyr::mutate(response_ratios,
   dplyr::group_by(part, pop_n_class) %>% 
   dplyr::summarise(min = min(lo), max = max(hi), .groups = "drop") %>% 
   dplyr::mutate(min = floor(min / next_full) * next_full, max = ceiling(max / next_full) * next_full) %>% 
-  dplyr::mutate(min = dplyr::case_when(min == 0 ~ -next_full, 
+  dplyr::mutate(min = dplyr::case_when(min >= 0 ~ -next_full, 
                                        TRUE ~ min), 
-                max = dplyr::case_when(max == 0 ~ next_full, 
+                max = dplyr::case_when(max <= 0 ~ next_full, 
                                        TRUE ~ max))
 
 data_temp <- dplyr::filter(response_ratios, part == "ag", pop_n %in% c(1, 2, 4))

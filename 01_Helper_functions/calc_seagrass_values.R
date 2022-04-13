@@ -78,9 +78,9 @@ calc_dist_production <- function(x, class_width = 1, i = NULL) {
 
 log_response <- function(data, indices) {
   
-  x <- data[indices, ] 
+  x <- data[indices, ]
   
-  f <- mean(log(x$attr)) - mean(log(x$rand))
+  f <- log(mean(x$attr)) - log(mean(x$rand))
   
   # f <- (exp(f) - 1) * 100
   
