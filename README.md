@@ -3,7 +3,7 @@
 
 ### Mechanistic support for increased primary production around artificial reefs
 
-This repository stores all analyzing `R` scripts for **Esquivel, K.E., Hesselbarth, M.H.K., Allgeier, J.E. Mechanistic support for increased primary production around artificial reefs. Manuscript submitted for publication.**
+This repository stores all analyzing `R` scripts for **Esquivel, K.E., Hesselbarth, M.H.K., Allgeier, J.E., 2022. Mechanistic support for increased primary production around artificial reefs. Ecological Applications e2617. <https://doi.org/10.1002/eap.2617>.**
 
 The repository contains the following folders (see README.txt in each folder for sub-directories):
 - `01_Helper_Functions/`
