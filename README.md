@@ -1,4 +1,3 @@
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![DOI](https://img.shields.io/badge/DOI-10.1002/eap.2617-blue)](https://doi.org/10.1002/eap.2617)
 
 This repository stores all analyzing `R` scripts for Esquivel, K.E., Hesselbarth, M.H.K., Allgeier, J.E., 2022. **Mechanistic support for increased primary production around artificial reefs**. Ecological Applications e2617.
