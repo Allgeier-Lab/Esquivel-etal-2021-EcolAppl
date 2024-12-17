@@ -1,6 +1,6 @@
-[![DOI](https://img.shields.io/badge/DOI-10.1002/eap.2617-blue)](https://doi.org/10.1002/eap.2617)
+[![DOI](https://img.shields.io/badge/DOI-10.1002/eap.2617-yellow.svg)](https://doi.org/10.1002/eap.2617) [![zenodo](https://img.shields.io/badge/DOI-10.5281/zenodo.5847402-blue.svg)](https://doi.org/10.5281/zenodo.5847402)
 
-This repository stores all analyzing `R` scripts for Esquivel, K.E., Hesselbarth, M.H.K., Allgeier, J.E., 2022. **Mechanistic support for increased primary production around artificial reefs**. Ecological Applications e2617.
+This repository stores all analyzing `R` scripts for Esquivel, K.E., Hesselbarth, M.H.K., Allgeier, J.E. (2022). *Mechanistic support for increased primary production around artificial reefs.* Ecological Applications 32 (6), e2617
 
 The repository contains the following folders (see README.txt in each folder for sub-directories):
 - `01_Helper_Functions/`
